@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pokeagent"
+version = "0.1.0"
+description = "Explainable Pokémon Showdown Random Battle agent (BITS F464 course project)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "poke-env>=0.16",
+    "numpy",
+    "pandas",
+    "pyarrow",
+    "scipy",
+    "scikit-learn",
+    "lightgbm",
+    "matplotlib",
+    "tqdm",
+    "huggingface_hub",
+    "datasets",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "nbstripout",
+]
+# Version 2 only. Do not import these from version 1 code.
+v2 = [
+    "shap",
+    "streamlit",
+    "torch",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "showdown: needs a local Pokémon Showdown server running on localhost:8000",
+    "data: needs the downloaded replay data in data/",
+]
+addopts = "-m 'not showdown and not data'"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]

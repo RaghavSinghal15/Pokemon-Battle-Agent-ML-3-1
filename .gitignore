@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Data and trained models: never committed (see data/README.md)
+data/*
+!data/README.md
+artifacts/
+
+# Local Showdown server, if someone clones it inside the repo by mistake
+pokemon-showdown/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Battle logs and replays saved while playing
+replays/
+logs/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
