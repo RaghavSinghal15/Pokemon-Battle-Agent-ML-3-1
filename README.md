@@ -31,7 +31,7 @@ The full explanation is in [`docs/01-project-explained.md`](docs/01-project-expl
 
 | Name | BITS ID | Role |
 |---|---|---|
-| Raghav Singhal | 2024ADPS0827G | TBD |
+| Raghav Singhal | 2024ADPS0827G | E. Opponent model; domain reviewer; integration |
 | Bhavsar Devam Jatin | 2024ADPS0831G | TBD |
 | Rishi Kumar Motwani | 2024ADPS0838G | TBD |
 | Yash Saxena | 2024ADPS0868G | TBD |

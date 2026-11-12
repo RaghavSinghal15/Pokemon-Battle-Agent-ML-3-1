@@ -20,9 +20,11 @@ inputs (see [02-roles.md](02-roles.md)).
 | M6 | Evaluation | A | 500+ games against each baseline with confidence intervals; ablations for beliefs, opponent model, and best response vs LP |
 | M7 | Explain and present | all | Explanation log demo, failure analysis of lost games, report, and a full mock viva |
 
-## Version 2 (only after M7)
+## Version 2: the extras pool
 
-Pick from these in roughly this order:
+Anyone whose own version 1 piece works, is tested and has been reviewed can claim one of these
+(say so in the group first). Never start an extra while someone downstream is waiting on your
+core piece: M5 (the agent plays with every component) comes first. Roughly in order of value:
 
 1. **Value model:** a classifier predicting who wins from a state, to give the payoff table a
    sense of the long term.

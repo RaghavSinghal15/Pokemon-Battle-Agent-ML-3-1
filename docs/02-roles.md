@@ -12,11 +12,11 @@ owner reviews and has the final say on it.
 | B. Data pipeline | `data/` | TBD | None |
 | C. Parser | `parser/` | TBD | Medium |
 | D. Beliefs and features | `beliefs/`, `features/` | TBD | High |
-| E. Opponent model | `models/` | TBD | Low |
+| E. Opponent model | `models/` | Raghav | Low |
 | F. Decision engine and agent | `decision/`, `agent/` | TBD | Medium |
 
-Plus one extra duty, not a role: the **domain reviewer**, the most experienced player on the
-team. They review anything game-related (parser semantics, features, payoff values) and answer
+Plus one extra duty, not a role: the **domain reviewer** (Raghav), the most experienced player
+on the team. They review anything game-related (parser semantics, features, payoff values) and answer
 "is this how the game actually works?" questions. This is a few hours a week, done alongside
 their own role.
 
