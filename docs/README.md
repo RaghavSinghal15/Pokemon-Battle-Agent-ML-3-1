@@ -11,8 +11,10 @@ Read these in order. The first four are for everyone; the rest you can look up w
 | 5 | [04-architecture.md](04-architecture.md) | How the modules connect, the data each one produces, the key design decisions | 15 min |
 | 6 | [05-plan.md](05-plan.md) | Version 1 milestones, what "done" means for each, and what waits for version 2 | 10 min |
 | 7 | [06-viva-prep.md](06-viva-prep.md) | Questions every member must be able to answer | ongoing |
-| 8 | [decisions.md](decisions.md) | A running log of design decisions and why we made them | ongoing |
-| 9 | [glossary.md](glossary.md) | Every term used in this repo, Pokémon and ML | lookup |
+| 8 | [08-foundation-checks.md](08-foundation-checks.md) | The assumptions we tested before building, and what we found | 15 min |
+| 9 | [09-evaluation-plan.md](09-evaluation-plan.md) | How we will measure success, fixed before any results | 5 min |
+| 10 | [decisions.md](decisions.md) | A running log of design decisions and why we made them | ongoing |
+| 11 | [glossary.md](glossary.md) | Every term used in this repo, Pokémon and ML | lookup |
 
 Then read [`../CONTRIBUTING.md`](../CONTRIBUTING.md) before your first pull request.
 

@@ -123,10 +123,11 @@ some real replays.
 **Course concepts:** data leakage, train/test contamination, testing a pipeline against ground
 truth.
 
-**Start here:** try feeding a replay log into poke-env's own `Battle.parse_message` (it already
-understands the protocol). If it tracks a spectator view correctly, you may only need to convert
-its state into `PublicState` instead of writing a parser from scratch. Record what you find in
-[decisions.md](decisions.md).
+**Start here:** read checks 2 to 4 in [08-foundation-checks.md](08-foundation-checks.md). We
+already know poke-env's `Battle.parse_message` parses public logs correctly, and that the live
+converter should re-parse the bot's own message stream with the same code. Your job is to turn
+`scripts/spikes/replay_parse.py` and `label_visibility.py` into the real, tested `parser/`
+module that produces `PublicState` and `DecisionPoint`.
 
 ## D. Beliefs and features
 
@@ -199,7 +200,8 @@ with the domain reviewer checking.
 linear programming.
 
 **Start here:** implement `minimax_lp` and test it on rock-paper-scissors (answer: one third
-each). Then make `ExplainableAgent` beat the random bot using only the damage calculator, with
+each). Read check 5 in [08-foundation-checks.md](08-foundation-checks.md) before touching the
+damage calculator: it crashes unless you fill in the opponent's stats first. Then make `ExplainableAgent` beat the random bot using only the damage calculator, with
 no opponent model yet.
 
 ---

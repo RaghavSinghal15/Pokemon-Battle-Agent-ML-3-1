@@ -9,7 +9,7 @@ description = "Explainable Pokémon Showdown Random Battle agent (BITS F464 cour
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "poke-env>=0.16",
+    "poke-env==0.16.1",  # pinned: the parser relies on Battle internals (docs/08)
     "numpy",
     "pandas",
     "pyarrow",
