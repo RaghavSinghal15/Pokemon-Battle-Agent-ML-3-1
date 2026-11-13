@@ -55,6 +55,17 @@ directly differs in 0.04% of checks, because it includes private information (ex
 Regenerator heals, seeing through Illusion, Ditto copying our moves). See checks 2 and 3 in
 [08-foundation-checks.md](08-foundation-checks.md).
 
+## 2026-11-14: Balanced baseline batch with six auditable records (A3, Devam)
+**Decision:** play each of the three baseline pairs in both challenge directions, 500 games
+each, and aggregate to 1,000 per pair. Keep every JSON summary and compute separate Wilson
+win intervals for both bots. Refuse partial/unbalanced or mixed-provenance reports.
+**Alternatives:** one challenge direction; combining cumulative counters; reporting only
+the most favourable sample; committing a table without the input records or code revision.
+**Why:** balancing direction reduces a possible setup confound, while the fixed batch and
+linked records make all numbers inspectable. Python seeds do not fix server-generated teams;
+these are measured stochastic baseline results, not a claim about our agent or a trained model.
+See [baseline-experiments.md](baseline-experiments.md) for reproduction and failure handling.
+
 ## 2026-11-14: Fresh-game accounting and saved provenance (A2, Devam)
 **Decision:** snapshot each player's battle ids, count only the new finished games, and
 cross-check outcomes from both clients. Save an exclusive JSON summary with commit, tracked
