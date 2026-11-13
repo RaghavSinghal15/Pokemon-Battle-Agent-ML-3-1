@@ -201,8 +201,9 @@ linear programming.
 
 **Start here:** implement `minimax_lp` and test it on rock-paper-scissors (answer: one third
 each). Read check 5 in [08-foundation-checks.md](08-foundation-checks.md) before touching the
-damage calculator: it crashes unless you fill in the opponent's stats first. Then make `ExplainableAgent` beat the random bot using only the damage calculator, with
-no opponent model yet.
+damage calculator: it crashes unless you fill in the opponent's stats first. Then make
+`ExplainableAgent` beat the random bot using only the damage calculator, with no opponent
+model yet.
 
 ---
 

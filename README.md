@@ -39,6 +39,7 @@ The full explanation is in [`docs/01-project-explained.md`](docs/01-project-expl
 | Vyom Sehgal | 2024A3PS0347G | TBD |
 
 Roles and what each one involves are described in [`docs/02-roles.md`](docs/02-roles.md).
+**Want to start? Pick a 🟢 task in [`TASKS.md`](TASKS.md).**
 
 ## Quickstart
 
@@ -97,9 +98,13 @@ CONTRIBUTING.md          How we work: branches, pull requests, reviews, AI usage
 Version 1 is the complete, fully working core. Version 2 extensions start only after
 version 1 is done. See [`docs/05-plan.md`](docs/05-plan.md).
 
+**What to work on next: [TASKS.md](TASKS.md)** (prioritised, with dependencies and what can
+start right now).
+
 | Milestone | Status |
 |---|---|
-| M0 Setup: local server, bots play each other | Not started |
+| Foundation checks: parser, replay/live parity, labels, damage calculator | Done, except the dataset check: see [docs/08](docs/08-foundation-checks.md) |
+| M0 Setup: local server, bots play each other | Works in CI; each teammate to confirm (task S1) |
 | M1 Data: filtered replays, splits, data report | Not started |
 | M2 Parser: validated, leakage-free states | Not started |
 | M3 Beliefs and features | Not started |

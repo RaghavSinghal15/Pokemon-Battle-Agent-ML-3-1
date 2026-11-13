@@ -13,7 +13,7 @@ modules are written properly with tests.
 
 | # | Question | Status | Answer in one line |
 |---|---|---|---|
-| 1 | Is the replay dataset what we think it is? | **Waiting on a laptop run** | Script ready: `scripts/spikes/check_dataset.py`. The workspace that ran the other checks can't reach Hugging Face |
+| 1 | Is the replay dataset what we think it is? | **Waiting on a laptop run (task B1)** | Script ready: `scripts/spikes/check_dataset.py`. The workspace that ran the other checks can't reach Hugging Face |
 | 2 | Can we turn a replay into turn-by-turn states? | **Yes** | poke-env's own battle tracker parses public logs. 400 games, 0 crashes |
 | 3 | Do replays and live games give the same state? | **Yes, if built the same way** | Re-parsing the live player's message stream gives 0 differences in 1.4 million field checks |
 | 4 | Can we see the opponent's choice often enough? | **Yes (bots; humans to confirm)** | 88% of turns give a label. The labels match true choices 99.98% of the time. One bias to handle |
