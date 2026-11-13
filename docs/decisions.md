@@ -62,3 +62,16 @@ switches excluded; a walking-skeleton agent that always plays.
 **Alternatives:** full player view for our own side; random turn-level split; exact-move
 prediction; multi-turn search.
 **Why:** see [04-architecture.md](04-architecture.md), section "Key design decisions".
+
+## 2026-11-13: Best response requires an explicit opponent forecast (F2, Devam)
+**Decision:** take each row's probability-weighted average payoff and pick the highest.
+Exact ties choose the first row. Missing probabilities, incorrect lengths, negative or
+non-finite entries and sums outside 1 +/- 1e-6 raise `ValueError`. Accepted rounding error
+is normalised away. The returned mix assigns probability one to the chosen action.
+**Alternatives:** assume uniform probabilities if missing; accept arbitrary weights; choose
+randomly between tied rows.
+**Why:** an implicit fallback can conceal a missing model connection. Requiring a distribution
+makes the expected payoff meaningful. A fixed tie rule makes experiments repeatable without
+adding randomness to this strategy. Tests use hand-calculated weighted averages, changed
+forecasts, negative payoffs, zero-probability columns and malformed inputs. Callers that want
+a uniform forecast must supply it; minimax is the separate strategy that needs no forecast.
