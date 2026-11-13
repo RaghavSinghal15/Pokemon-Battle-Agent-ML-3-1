@@ -12,8 +12,10 @@ Sizes are rough effort for one person: **S** = a few hours, **M** = 1–2 days, 
 
 ## How to pick up a task
 
-1. Find the task's GitHub issue (same ID in the title, e.g. `[C1]`). **Assign yourself** and
-   say so in the group so two people don't do the same thing.
+1. Find the task's GitHub issue (same ID in the title, e.g. `[C1]`): every task has one,
+   labelled by role and by `start now` / `soon` / `later`.
+   [All start-now issues](https://github.com/RaghavSinghal15/Pokemon-Battle-Agent-ML-3-1/issues?q=is%3Aopen+label%3A%22start+now%22).
+   **Assign yourself** and say so in the group so two people don't do the same thing.
 2. Branch: `<role>/<task-id>-short-name`, e.g. `c/c1-replay-parser`.
 3. Read your role's section in [docs/02-roles.md](docs/02-roles.md) and anything the task
    links to. If an AI assistant helps you, it reads [AGENTS.md](AGENTS.md) automatically.
