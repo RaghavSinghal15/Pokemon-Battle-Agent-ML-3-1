@@ -15,6 +15,19 @@ Template:
 
 ---
 
+## 2026-11-13: Minimax probabilities and repeatable sampling (F1, Devam)
+**Decision:** maximise the worst-case expected payoff with `scipy.optimize.linprog`, then
+sample an action from the resulting probabilities. The value variable can be negative.
+The default random generator uses `config.SEED` once; experiments can pass their own seeded
+generator. Probability labels include action kind, name and tera to distinguish legal options.
+**Alternatives:** always take the most probable action; restart the seed every turn; constrain
+the guaranteed value to be non-negative; use the opponent model's probabilities in the LP.
+**Why:** predictable choices lose the protection of a mixed strategy. Negative-value games
+still need a legal solution. Minimax protects against every supplied opponent column, so it
+does not use a forecast. Tests cover uniform and non-uniform games, negative payoffs and
+repeatable sequences of varied actions. This guarantee applies only to the table's expected
+payoff, not to one sampled action or to the full battle.
+
 ## 2026-11-13: Draft evaluation plan, written before any results (A, Raghav)
 **Decision:** 1,000 games per opponent (random, max power, heuristics) with Wilson intervals;
 heuristics is the headline opponent; log loss is the opponent model's main metric; success
