@@ -36,6 +36,8 @@ calculator failure as zero; rank moves by maximum damage alone.
 and midpoint damage as percent of estimated maximum HP. Failures have `None` values and an
 explicit error, distinct from a genuine zero (status move or immunity). This lets F4 choose
 a documented fallback. Forced switches and absent/fainted active Pokemon produce no scores.
+Recharge is a forced rest turn and scores zero without entering the calculator, because
+poke-env's recharge placeholder lacks ordinary move metadata. A regression test covers it.
 **Limits:** the midpoint is an approximation conditional on a non-critical hit, not a full
 expected payoff. Accuracy, KO capping, secondary effects, switching and status utility are
 left to F4. Default spreads miss reduced Attack/Speed and HP adjustments; transformed or

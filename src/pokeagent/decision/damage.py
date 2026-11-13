@@ -93,6 +93,11 @@ def estimate_move_damage(battle: Battle) -> dict[str, DamageEstimate]:
         return dict.fromkeys((move.id for move in battle.available_moves), failure)
 
     for move in battle.available_moves:
+        # Recharge is a forced rest turn, not an attack. poke-env's placeholder lacks
+        # ordinary move fields (including priority), so it cannot enter the calculator.
+        if move.id == "recharge":
+            estimates[move.id] = DamageEstimate(0.0, 0.0, 0.0)
+            continue
         try:
             low, high = calculate_damage(attacker_key, defender_key, move, calculation)
             if not math.isfinite(low) or not math.isfinite(high) or not 0 <= low <= high:

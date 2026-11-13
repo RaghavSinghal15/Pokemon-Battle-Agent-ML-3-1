@@ -159,3 +159,13 @@ def test_other_generations_are_rejected():
     battle = Battle("battle-test", "Alice", logging.getLogger(__name__), gen=8)
     with pytest.raises(ValueError, match="Gen 9 singles"):
         estimate_move_damage(battle)
+
+
+def test_recharge_is_a_rest_turn_not_a_calculator_failure(monkeypatch):
+    def must_not_calculate(*args):
+        raise AssertionError("Recharge must not enter the damage calculator")
+
+    monkeypatch.setattr(damage, "calculate_damage", must_not_calculate)
+    result = estimate_move_damage(make_battle(moves=("recharge",)))["recharge"]
+    assert result.error is None
+    assert result.min_percent == result.max_percent == result.expected_percent == 0
