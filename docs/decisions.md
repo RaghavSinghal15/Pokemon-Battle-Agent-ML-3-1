@@ -24,6 +24,20 @@ accuracy as the main metric (ignores probability quality, which the decision eng
 **Why:** 1,000 games distinguishes differences of about 4.5 points; fixing criteria before
 results prevents goalpost-moving.
 
+## 2026-11-14: Provisional F4 payoff policy for domain review (F, Devam)
+**Decision:** implement the original stub's individual-move columns plus an aggregate switch
+column. Preserve class probability mass using explicitly heuristic inclusion weights. Score
+HP fractions and a 0.25 KO bonus across endpoint/miss/order branches on copies, cancelling
+actions after KOs. Missing candidates and calculation failures remain unavailable, not zero.
+**Alternatives:** exactly three class-average columns; midpoint damage before KO checks;
+silent forecast renormalisation; inventing hidden switch species or unreviewed status bonuses.
+**Why:** retain differences between candidate attacks for minimax, keep the probability and
+utility units clear, and expose missing information to callers. The user requested proceeding
+with implementation while earlier reviews are pending; this is not domain approval.
+**Limits:** supported mechanics, omitted effects, warning/fallback semantics and all provisional
+choices are in [f4-implementation.md](f4-implementation.md). This remains subject to review;
+no live-agent integration, model training, win-rate claim or shared-interface change is made.
+
 ## 2026-11-13: Damage estimates without changing live state (F3, Devam)
 **Decision:** `decision/damage.py` fills missing opponent stats with the default Gen 9
 Random Battle spread (85 EVs, 31 IVs, neutral nature), using the experiment in check 5 of
