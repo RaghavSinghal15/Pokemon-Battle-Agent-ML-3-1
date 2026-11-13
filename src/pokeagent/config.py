@@ -31,5 +31,9 @@ HF_REPLAY_DATASET = "HolidayOugi/pokemon-showdown-replays"
 # One seed for everything random (splits, model training, sampling), so results reproduce.
 SEED = 464
 
+# Provisional one-turn decision policy, not fitted model parameters.
+PAYOFF_KO_BONUS = 0.25
+RANDOM_BATTLE_TEAM_SIZE = 6
+
 # Local Showdown server started with `node pokemon-showdown start --no-security`.
 LOCAL_SERVER_URL = "ws://localhost:8000/showdown/websocket"
