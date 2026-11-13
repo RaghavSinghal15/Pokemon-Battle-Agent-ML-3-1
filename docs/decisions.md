@@ -55,6 +55,16 @@ directly differs in 0.04% of checks, because it includes private information (ex
 Regenerator heals, seeing through Illusion, Ditto copying our moves). See checks 2 and 3 in
 [08-foundation-checks.md](08-foundation-checks.md).
 
+## 2026-11-14: Wilson intervals measure wins, with ties kept separate (A1, Devam)
+**Decision:** return a Wilson score interval for integer wins out of a positive game count;
+default z=1.96, nominal 95%. Reject missing/invalid samples. A tie counts as a non-win in
+the win fraction, while tournament output reports ties separately.
+**Alternatives:** normal/Wald intervals; half a win per tie; a fabricated result for zero games.
+**Why:** Wilson behaves sensibly at zero and all wins. Half-credit measures a different
+quantity; no games provide no estimated win probability. Bounds describe sampling
+uncertainty, not model uncertainty or a guaranteed range. Tests check known values and edges.
+Formula reference: [NIST Engineering Statistics Handbook](https://www.itl.nist.gov/div898/handbook/prc/section2/prc241.htm).
+
 ## 2026-11-13: Initial architecture (all)
 **Decision:** public-information states for both sides; split by battle with the newest
 battles as test; three action classes for the opponent model; one-turn payoffs; forced
