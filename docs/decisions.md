@@ -55,6 +55,17 @@ directly differs in 0.04% of checks, because it includes private information (ex
 Regenerator heals, seeing through Illusion, Ditto copying our moves). See checks 2 and 3 in
 [08-foundation-checks.md](08-foundation-checks.md).
 
+## 2026-11-14: Fresh-game accounting and saved provenance (A2, Devam)
+**Decision:** snapshot each player's battle ids, count only the new finished games, and
+cross-check outcomes from both clients. Save an exclusive JSON summary with commit, tracked
+change flag, UTC date, package versions, format and seed. The CLI owns and closes its clients.
+**Alternatives:** cumulative client counters; overwriting one results file; reporting a partial
+run as a completed matchup; treating a Python seed as a seeded server simulation.
+**Why:** repeated matchups must not inherit earlier wins. Code and server provenance make
+results auditable, but server-generated teams remain stochastic. Source should be committed
+before formal runs; raw logs and player names are not needed for this summary. See
+[evaluation-runner.md](evaluation-runner.md) for the contracts and limitations.
+
 ## 2026-11-14: Wilson intervals measure wins, with ties kept separate (A1, Devam)
 **Decision:** return a Wilson score interval for integer wins out of a positive game count;
 default z=1.96, nominal 95%. Reject missing/invalid samples. A tie counts as a non-win in
