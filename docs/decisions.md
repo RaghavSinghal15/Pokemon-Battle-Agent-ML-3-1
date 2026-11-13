@@ -24,6 +24,28 @@ accuracy as the main metric (ignores probability quality, which the decision eng
 **Why:** 1,000 games distinguishes differences of about 4.5 points; fixing criteria before
 results prevents goalpost-moving.
 
+## 2026-11-13: Damage estimates without changing live state (F3, Devam)
+**Decision:** `decision/damage.py` fills missing opponent stats with the default Gen 9
+Random Battle spread (85 EVs, 31 IVs, neutral nature), using the experiment in check 5 of
+[08-foundation-checks.md](08-foundation-checks.md). Copies of the active Pokemon and team
+mappings isolate these guesses from the live battle. Known stats, revealed items, abilities,
+boosts, types and field conditions are retained; no peer/oracle battle is used.
+**Alternatives:** modify the tracked opponent directly; guess its item/ability; score a
+calculator failure as zero; rank moves by maximum damage alone.
+**Why:** guessed stats must not become observations. Each result records minimum, maximum
+and midpoint damage as percent of estimated maximum HP. Failures have `None` values and an
+explicit error, distinct from a genuine zero (status move or immunity). This lets F4 choose
+a documented fallback. Forced switches and absent/fainted active Pokemon produce no scores.
+Recharge is a forced rest turn and scores zero without entering the calculator, because
+poke-env's recharge placeholder lacks ordinary move metadata. A regression test covers it.
+**Limits:** the midpoint is an approximation conditional on a non-critical hit, not a full
+expected payoff. Accuracy, KO capping, secondary effects, switching and status utility are
+left to F4. Default spreads miss reduced Attack/Speed and HP adjustments; transformed or
+disguised opponents can be misestimated. Unknown items and abilities remain unknown; belief
+averaging is future work. poke-env 0.16.1 itself approximates multi-hit moves and has other
+documented calculator gaps. Unit tests exercise actual mechanics, and a server-marked test
+checks the helper throughout ten complete games without mutating tracked opponent details.
+
 ## 2026-11-13: Fill in opponent stats from Random Battle spreads before damage calc (F, Raghav)
 **Decision:** before calling poke-env's damage calculator, set the opponent's stats from
 species and level with 85 EVs, 31 IVs and a neutral nature in every stat (the generator's
