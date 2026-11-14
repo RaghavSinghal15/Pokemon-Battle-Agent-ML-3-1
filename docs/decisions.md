@@ -15,6 +15,23 @@ Template:
 
 ---
 
+## 2026-11-14 · Approximate hidden sets from Showdown's set file (D)
+
+**Decision.** Give each listed set template equal weight. Assume equally likely move combinations
+within each template and uniform ability and Tera type choices. Keep hidden items unknown.
+Recompute beliefs from cumulative public observations on each turn.
+
+**Alternatives.** Use empirical Random Battle usage rates or reproduce the generator's full
+move, team and item rules.
+
+**Why.** The local set file gives a consistent starting point for replay and live features. The
+assumptions let us calculate the chance of seeing a combination of moves and show exactly how
+it changes the estimate. Showdown's generator can prefer some combinations. Older replays and
+effects like Transform can also disagree with the set file. If every template is ruled out,
+keep the role prior and the observed details. See [Showdown's set file and generator][gen9].
+
+[gen9]: https://github.com/smogon/pokemon-showdown/tree/master/data/random-battles/gen9
+
 ## 2026-11-13: Draft evaluation plan, written before any results (A, Raghav)
 **Decision:** 1,000 games per opponent (random, max power, heuristics) with Wilson intervals;
 heuristics is the headline opponent; log loss is the opponent model's main metric; success
