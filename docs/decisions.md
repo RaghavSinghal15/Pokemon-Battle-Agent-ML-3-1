@@ -15,6 +15,20 @@ Template:
 
 ---
 
+## 2026-11-14 · Snapshot at the turn boundary and attach labels afterward (C)
+
+**Decision.** Rebuild a public battle with poke-env and snapshot both sides at each turn
+marker. Read observable choices from the following events. Rebuild the live view with
+the same parser, ignoring private requests and normalizing HP to the spectator percentage.
+
+**Alternatives.** Use the live player's internal team state or attach labels while building
+the state for the same turn.
+
+**Why.** The public log supplies the same inputs in training and live play. Taking the
+snapshot before reading the choice also prevents the move, revealed items and damage
+from entering their own training row. Drop turns with hidden choices and keep the
+observed disguise when the log shows a voluntary switch under Illusion.
+
 ## 2026-11-13: Draft evaluation plan, written before any results (A, Raghav)
 **Decision:** 1,000 games per opponent (random, max power, heuristics) with Wilson intervals;
 heuristics is the headline opponent; log loss is the opponent model's main metric; success

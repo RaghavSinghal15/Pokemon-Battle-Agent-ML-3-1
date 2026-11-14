@@ -1,21 +1,29 @@
-"""Live poke-env battle -> PublicState (used when our agent is actually playing)."""
+"""Convert live poke-env messages to the same public states used for training."""
+
+from collections.abc import Iterable, Iterator
 
 from poke_env.battle import AbstractBattle
 
-from pokeagent.interfaces import PublicState
+from pokeagent.interfaces import Player, PublicState
+from pokeagent.parser.replay import iter_public_states
+
+
+def iter_live_states(
+    battle_id: str, lines: Iterable[str], perspective: Player
+) -> Iterator[PublicState]:
+    """Yield one side's public states from its received message stream."""
+    for state in iter_public_states(battle_id, lines):
+        if state.perspective == perspective:
+            yield state
 
 
 def state_from_battle(battle: AbstractBattle) -> PublicState:
-    """Convert poke-env's live Battle object into the same PublicState the replay parser makes.
-
-    TODO (role C, task C3 in TASKS.md):
-    - Don't read the live battle object directly: it contains private information about our
-      own team (exact HP, unrevealed moves) and even leaks it into the opponent's side (Ditto).
-      Instead, re-parse the messages our bot received (`battle._replay_data`) with the same
-      code as parser.replay, so training and live play share one code path. Checks 2 and 3 in
-      docs/08-foundation-checks.md showed this gives exactly the spectator view.
-    - Validation (task C4): on local games, this function on the live stream and parser.replay
-      on the spectator log must give the same state for every turn. That test is the proof
-      that training inputs match live inputs.
-    """
-    raise NotImplementedError
+    """Return the current turn's initial snapshot from public protocol events."""
+    perspective = battle.player_role
+    if perspective not in ("p1", "p2") or battle.turn < 1:
+        raise ValueError("The battle must have started a decision turn")
+    lines = ("|".join(message) for message in battle._replay_data)
+    for state in iter_live_states(battle.battle_tag, lines, perspective):
+        if state.turn == battle.turn:
+            return state
+    raise ValueError(f"Public messages for turn {battle.turn} are missing")
