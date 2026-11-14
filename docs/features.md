@@ -51,5 +51,16 @@ probability of the single most likely move in each group. Those values do not me
 chance of carrying at least one move in the group.
 
 The current choice, effects later in the turn and the battle result are excluded.
-Battle IDs and split names are table metadata. For the replay table, flip the perspective
-of each labelled decision point so that its observed actor is the model's opponent.
+## Export replay features
+
+From the repository root, run `python -m pokeagent.features.export` after roles B
+and C have produced `data/splits.json` and `data/processed/decision_points.parquet`.
+The exporter reads the architecture's `state` JSON column and an `action` stored as
+JSON or a Parquet struct. It writes `data/processed/features.parquet` with one row
+per labelled decision point. It never recalculates the split.
+
+Each input point uses the labelled player's perspective. The exporter swaps sides
+and both previous actions before building features, so `opp_` describes the player
+whose action is the label. The output `perspective` field still identifies that
+labelled player, matching the input key. Train using the exact columns listed in
+`FEATURE_NAMES`. Use `action_class` as the label and `split` to select rows.
