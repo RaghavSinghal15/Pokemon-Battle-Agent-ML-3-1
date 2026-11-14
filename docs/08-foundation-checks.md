@@ -107,6 +107,44 @@ The received messages live in poke-env's `battle._replay_data`. That's a private
 so poke-env could change it in an update. We pin poke-env to the exact version we tested
 (`0.16.1`). As a fallback, the bot can record messages itself.
 
+### Production parser validation (C1–C4)
+
+The production parser produced **35,482 public states across 1,000 local
+heuristics-vs-heuristics games**. All matched the corresponding live-stream state
+across both perspectives. The run used poke-env 0.16.1 and Showdown revision
+`7e743761cd13cdb361fc0f58eb5a866284894f5b`.
+
+Among 29,495 labels with a corresponding recorded bot choice, 29,490 agreed on
+action kind and name. For two switches, the public log showed Zoroark's disguise.
+For the other three, the collector recorded a switch while the public log showed
+the bot using a move. The parser keeps the publicly observed action.
+
+To rerun from the repository root with Showdown running:
+
+```sh
+python scripts/spikes/collect_local_games.py --games 1000 --out data/interim/parser_local_1000.jsonl
+POKEAGENT_PARSER_CAPTURE=data/interim/parser_local_1000.jsonl pytest -m showdown tests/test_parser.py
+```
+
+PowerShell users can set `$env:POKEAGENT_PARSER_CAPTURE = "data/interim/parser_local_1000.jsonl"`
+on a separate line before calling pytest. Use a fresh output path because the collector appends.
+
+### Human replay sample (C5)
+
+The first 5,000 standard Gen 9 Random Battle rows of
+`[Gen 9] RANDOMBATTLE_part1.parquet` at dataset revision
+`15a0a455dbcb7f5c07c2dd670f9252f275d4ddc8` produced **200,894 decision
+points**. No games failed to parse. Thirty-seven finished games had no observable
+choices, including 36 that ended on turn one and one that ended before the first turn.
+This sample is for checking parser compatibility. The official training run needs
+the role B battle table and battle-ID split file.
+
+Run `python -m pokeagent.parser.export` for the full battle table, or add
+`--split train` to select only the official training battles from `data/splits.json`.
+The exporter expects `battle_id` and `log` plus optional `winner` and `ratings`.
+It writes public state JSON, an action struct and a win flag. It prints an aggregate
+error count and skips any whole replay with an unsupported event.
+
 ## 4. Can we see what the opponent chose?
 
 **Question.** The opponent model's label is "what the opponent did this turn". A replay shows
