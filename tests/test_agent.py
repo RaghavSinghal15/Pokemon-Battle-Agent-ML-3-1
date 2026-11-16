@@ -1,5 +1,7 @@
 """Legal action mapping and explicit fallback behavior of the F5 player."""
 
+import json
+
 import pytest
 from poke_env.battle import Pokemon
 from test_damage import make_battle
@@ -7,9 +9,34 @@ from test_payoff import add_reserve
 
 from pokeagent.agent import player
 from pokeagent.agent.player import ExplainableAgent, flat_beliefs
+from pokeagent.beliefs import tracker
 from pokeagent.config import BATTLE_FORMAT
 from pokeagent.decision.payoff import PayoffUnavailable
 from pokeagent.interfaces import Action, PayoffTable, SetBelief
+
+
+@pytest.fixture(autouse=True)
+def public_sets(tmp_path, monkeypatch):
+    """Small public set definitions; fast agent tests need no Showdown checkout."""
+    path = tmp_path / "agent-sets.json"
+    definitions = {}
+    for species, moves in (
+        ("blissey", ["Seismic Toss", "Protect"]),
+        ("pikachu", ["Surf", "Thunderbolt"]),
+    ):
+        definitions[species] = {
+            "sets": [
+                {
+                    "role": "Test support",
+                    "movepool": moves,
+                    "abilities": ["Static"],
+                    "teraTypes": ["Normal"],
+                }
+            ]
+        }
+    path.write_text(json.dumps(definitions), encoding="utf-8")
+    monkeypatch.setattr(player, "RANDOM_BATTLE_SETS_PATH", path)
+    monkeypatch.setattr(tracker, "RANDOM_BATTLE_SETS_PATH", path)
 
 
 @pytest.fixture
