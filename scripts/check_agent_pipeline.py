@@ -116,7 +116,10 @@ async def main(args: argparse.Namespace) -> dict:
                 raise RuntimeError("An action did not produce exactly one explanation")
             summary["strategies"].append(entry)
             (args.out_dir / f"{strategy}-demo.txt").write_text(
-                "UNTRAINED FIXED-FORECAST SMOKE TEST; NOT E5\n\n" + log.table + log.fallback,
+                (
+                    "UNTRAINED FIXED-FORECAST SMOKE TEST; NOT E5\n\n" + log.table + log.fallback
+                ).rstrip()
+                + "\n",
                 encoding="utf-8",
             )
             print(json.dumps(entry), flush=True)

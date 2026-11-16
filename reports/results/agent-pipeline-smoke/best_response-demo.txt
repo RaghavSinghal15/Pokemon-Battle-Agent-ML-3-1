@@ -8,4 +8,3 @@ Chose move:lunge: Best response chooses move:lunge with expected payoff +0.011 u
 Utility is an approximate one-turn HP score plus KO bonus, not win probability.
 
 Battle battle-gen9randombattle-3755 | Turn 4: switch:munkidori; Fallback: forced replacement, outside the simultaneous table; healthiest legal replacement.
-
