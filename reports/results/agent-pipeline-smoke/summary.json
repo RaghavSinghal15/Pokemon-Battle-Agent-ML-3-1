@@ -1,0 +1,43 @@
+{
+  "forecast": "untrained fixed thirds; plumbing only, not E5",
+  "source": {
+    "commit": "ad4850f67c787b1f2eef359f5ad1c26653d38d74",
+    "tracked_changes": false
+  },
+  "strategies": [
+    {
+      "strategy": "best_response",
+      "games": 100,
+      "model_calls": 2515,
+      "explanations": 2699,
+      "decision_counts": {
+        "best_response": 2493,
+        "baseline": 206
+      },
+      "fallback_reasons": {
+        "forced replacement, outside the simultaneous table": 184,
+        "PayoffUnavailable: Positive non_damaging probability has no move candidates": 12,
+        "PayoffUnavailable: No opponent move candidates; supply public priors or revealed moves": 7,
+        "PayoffUnavailable: Positive attack probability has no move candidates": 3
+      },
+      "client_errors": 0
+    },
+    {
+      "strategy": "lp",
+      "games": 100,
+      "model_calls": 2958,
+      "explanations": 3112,
+      "decision_counts": {
+        "lp": 2950,
+        "baseline": 162
+      },
+      "fallback_reasons": {
+        "forced replacement, outside the simultaneous table": 154,
+        "PayoffUnavailable: Positive non_damaging probability has no move candidates": 4,
+        "PayoffUnavailable: No opponent move candidates; supply public priors or revealed moves": 3,
+        "PayoffUnavailable: Unsupported action-order item": 1
+      },
+      "client_errors": 0
+    }
+  ]
+}

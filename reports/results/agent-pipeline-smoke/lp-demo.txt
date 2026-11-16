@@ -1,0 +1,13 @@
+UNTRAINED FIXED-FORECAST SMOKE TEST; NOT E5
+
+Battle battle-gen9randombattle-3852 | Turn 1: indeedeef (100%) vs rabsca (100%)
+Beliefs: Wallbreaker 100%
+Opponent forecast: attack 33%, non_damaging 33%, switch 33%
+Minimax ignores the opponent forecast and protects against supplied columns.
+Mixture: move:shadowball 35.2%, switch:carbink 64.8%
+Row worst cases (the LP can improve these by mixing): move:shadowball -0.274 | move:calmmind -0.772 | move:hypervoice -0.353 | move:psychic -0.503 | switch:greattusk -1.250 | switch:medicham -0.753 | switch:exeggutoralola -0.873 | switch:carbink -0.445 | switch:arbok -1.250
+Chose switch:carbink: Minimax mix has worst-case expected payoff -0.203 within this table. Sampled switch:carbink with probability 64.8%.
+Utility is an approximate one-turn HP score plus KO bonus, not win probability.
+
+Battle battle-gen9randombattle-3853 | Turn 14: switch:scrafty; Fallback: forced replacement, outside the simultaneous table; healthiest legal replacement.
+
