@@ -109,7 +109,7 @@ start right now).
 | M2 Parser: validated, leakage-free states | Not started |
 | M3 Beliefs and features | Not started |
 | M4 Opponent model with calibration | Not started |
-| M5 Agent plays full games, both strategies | Not started |
+| M5 Agent plays full games, both strategies | F5 development check passed over 400 games; F6 awaits the trained E5 model |
 | M6 Evaluation: tournaments and ablations | Not started |
 | M7 Report, explanation log, mock viva | Not started |
 
