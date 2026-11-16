@@ -1,6 +1,9 @@
 """The per-turn explanation log: why the agent chose what it chose."""
 
-from pokeagent.interfaces import BeliefState, Decision, PayoffTable, PublicState
+import math
+
+from pokeagent.decision._validation import action_label, payoff_matrix
+from pokeagent.interfaces import ACTION_CLASSES, BeliefState, Decision, PayoffTable, PublicState
 
 
 def format_turn(
@@ -10,14 +13,62 @@ def format_turn(
     table: PayoffTable,
     decision: Decision,
 ) -> str:
-    """Return a short, readable explanation of one turn, for example:
+    """Explain public beliefs, the forecast and the strategy's actual scoring criterion.
 
-        Turn 7  Gholdengo (78%) vs Garchomp (100%)
-        Beliefs: Garchomp is Setup Sweeper 82%, Fast Support 18%; Choice Scarf 0%
-        Opponent prediction: attack 61%, switch 27%, non_damaging 12%
-        Payoffs: Make It Rain +0.42 | Shadow Ball +0.18 | switch to Corviknight +0.05
-        Chose Make It Rain (best response, expected payoff +0.42)
-
-    TODO (roles F and E).
+    Best response shows row expectations under the feasible column distribution. Minimax
+    shows the row minima and the mixture's worst case, not a forecast-based guarantee.
     """
-    raise NotImplementedError
+    values = payoff_matrix(table)
+    if (
+        set(class_probs) != set(ACTION_CLASSES)
+        or any(not math.isfinite(p) or p < 0 for p in class_probs.values())
+        or not math.isclose(sum(class_probs.values()), 1, abs_tol=1e-6)
+    ):
+        raise ValueError("Explanation requires a valid three-class forecast")
+    me, opp = state.me.active, state.opp.active
+    matchup = " vs ".join(
+        f"{mon.species} ({mon.hp_fraction:.0%})" if mon else "no active Pokemon"
+        for mon in (me, opp)
+    )
+    lines = [f"Battle {state.battle_id} | Turn {state.turn}: {matchup}"]
+    belief = beliefs.get(opp.species) if opp else None
+    if belief and belief.role_probs:
+        roles = sorted(belief.role_probs.items(), key=lambda pair: (-pair[1], pair[0]))
+        lines.append("Beliefs: " + ", ".join(f"{name} {p:.0%}" for name, p in roles))
+    else:
+        lines.append(
+            "Beliefs: no supported role distribution; using available public move evidence."
+        )
+    lines.append(
+        "Opponent forecast: " + ", ".join(f"{c} {class_probs[c]:.0%}" for c in ACTION_CLASSES)
+    )
+    if decision.strategy == "best_response":
+        if table.opp_probs is None:
+            raise ValueError("Best-response explanation needs the feasible column probabilities")
+        scores = values @ table.opp_probs
+        label = "Expected row payoffs after impossible-class renormalisation"
+    elif decision.strategy == "lp":
+        scores = values.min(axis=1)
+        label = "Row worst cases (the LP can improve these by mixing)"
+        lines.append("Minimax ignores the opponent forecast and protects against supplied columns.")
+        lines.append(
+            "Mixture: "
+            + ", ".join(
+                f"{name} {probability:.1%}"
+                for name, probability in decision.mixed_strategy.items()
+                if probability > 0
+            )
+        )
+    else:
+        raise ValueError("A table explanation requires best_response or lp")
+    lines.append(
+        label
+        + ": "
+        + " | ".join(
+            f"{action_label(action)} {score:+.3f}"
+            for action, score in zip(table.our_actions, scores, strict=True)
+        )
+    )
+    lines.append(f"Chose {action_label(decision.chosen)}: {decision.explanation}")
+    lines.append("Utility is an approximate one-turn HP score plus KO bonus, not win probability.")
+    return "\n".join(lines)

@@ -23,6 +23,7 @@ ARTIFACTS_DIR = REPO_ROOT / "artifacts"
 REPORTS_DIR = REPO_ROOT / "reports"
 MATCHUP_RESULTS_DIR = REPORTS_DIR / "results" / "matchups"
 AGENT_V0_RESULTS_DIR = REPORTS_DIR / "results" / "agent-v0"
+AGENT_PIPELINE_RESULTS_DIR = REPORTS_DIR / "results" / "agent-pipeline-smoke"
 
 # The Showdown format we play. "gen9randombattle" = Generation 9, singles, random teams.
 BATTLE_FORMAT = "gen9randombattle"

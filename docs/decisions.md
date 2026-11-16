@@ -197,6 +197,16 @@ swallow failed tables without reporting coverage.
 of model training. A temporary agent-side cosmetic-form mapping consumes D1 without changing
 the peer-owned belief code. See [f5-agent-v0.md](f5-agent-v0.md) for the policy and measurement.
 
+## 2026-11-17: Explicit learned-model mode and strategy-specific explanations (F6, Devam)
+**Decision:** require an injected model for model mode; build its inputs only through C3,
+D2 and D4. Explain the original class forecast and the actual table criterion, distinguishing
+best-response expectations from minimax's worst-case mixture. Log every fallback too.
+**Alternatives:** silently use thirds when a model is absent; feed private live stats into
+features; explain minimax as though it optimises the model forecast.
+**Why:** these alternatives hide missing dependencies or confuse the mathematical guarantee.
+E5 is still a stub, so fixed-forecast integration games are labelled smoke-only and cannot
+complete F6. See [f6-integration.md](f6-integration.md) for the remaining real-model check.
+
 ## 2026-11-13: Initial architecture (all)
 **Decision:** public-information states for both sides; split by battle with the newest
 battles as test; three action classes for the opponent model; one-turn payoffs; forced
