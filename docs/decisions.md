@@ -28,6 +28,20 @@ does not use a forecast. Tests cover uniform and non-uniform games, negative pay
 repeatable sequences of varied actions. This guarantee applies only to the table's expected
 payoff, not to one sampled action or to the full battle.
 
+## 2026-11-14 · Use the same 29 public features offline and live (D)
+
+**Decision.** Use the ordered schema in [features.md](features.md). Include rough type and
+speed comparisons, public status and team counts, the previous opponent action, and two
+move probabilities from the belief tracker.
+
+**Alternatives.** Encode species and moves as categories or run the damage calculator as a
+feature.
+
+**Why.** These numbers have the same meaning across species and can be computed before
+either player acts. Type and speed summarize the matchup cheaply, with their assumptions
+documented for review. Keeping the current action out of the feature builder avoids
+exposing the model's training label.
+
 ## 2026-11-14 · Approximate hidden sets from Showdown's set file (D)
 
 **Decision.** Give each listed set template equal weight. Assume equally likely move combinations
