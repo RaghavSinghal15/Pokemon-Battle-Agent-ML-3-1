@@ -15,6 +15,19 @@ Template:
 
 ---
 
+## 2026-11-13: Minimax probabilities and repeatable sampling (F1, Devam)
+**Decision:** maximise the worst-case expected payoff with `scipy.optimize.linprog`, then
+sample an action from the resulting probabilities. The value variable can be negative.
+The default random generator uses `config.SEED` once; experiments can pass their own seeded
+generator. Probability labels include action kind, name and tera to distinguish legal options.
+**Alternatives:** always take the most probable action; restart the seed every turn; constrain
+the guaranteed value to be non-negative; use the opponent model's probabilities in the LP.
+**Why:** predictable choices lose the protection of a mixed strategy. Negative-value games
+still need a legal solution. Minimax protects against every supplied opponent column, so it
+does not use a forecast. Tests cover uniform and non-uniform games, negative payoffs and
+repeatable sequences of varied actions. This guarantee applies only to the table's expected
+payoff, not to one sampled action or to the full battle.
+
 ## 2026-11-13: Draft evaluation plan, written before any results (A, Raghav)
 **Decision:** 1,000 games per opponent (random, max power, heuristics) with Wilson intervals;
 heuristics is the headline opponent; log loss is the opponent model's main metric; success
@@ -115,3 +128,16 @@ switches excluded; a walking-skeleton agent that always plays.
 **Alternatives:** full player view for our own side; random turn-level split; exact-move
 prediction; multi-turn search.
 **Why:** see [04-architecture.md](04-architecture.md), section "Key design decisions".
+
+## 2026-11-13: Best response requires an explicit opponent forecast (F2, Devam)
+**Decision:** take each row's probability-weighted average payoff and pick the highest.
+Exact ties choose the first row. Missing probabilities, incorrect lengths, negative or
+non-finite entries and sums outside 1 +/- 1e-6 raise `ValueError`. Accepted rounding error
+is normalised away. The returned mix assigns probability one to the chosen action.
+**Alternatives:** assume uniform probabilities if missing; accept arbitrary weights; choose
+randomly between tied rows.
+**Why:** an implicit fallback can conceal a missing model connection. Requiring a distribution
+makes the expected payoff meaningful. A fixed tie rule makes experiments repeatable without
+adding randomness to this strategy. Tests use hand-calculated weighted averages, changed
+forecasts, negative payoffs, zero-probability columns and malformed inputs. Callers that want
+a uniform forecast must supply it; minimax is the separate strategy that needs no forecast.
