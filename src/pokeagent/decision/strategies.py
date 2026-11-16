@@ -22,10 +22,6 @@ def best_response(table: PayoffTable) -> Decision:
     are an error rather than an implicit uniform forecast. Exact ties pick the first row,
     so results are repeatable. Invalid tables or probabilities raise ValueError.
     """
-    import numpy as np
-
-    from pokeagent.decision._validation import action_label, payoff_matrix
-
     values = payoff_matrix(table)
     if table.opp_probs is None:
         raise ValueError("Best response requires opponent probabilities")
