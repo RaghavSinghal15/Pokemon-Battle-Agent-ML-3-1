@@ -7,8 +7,8 @@ Sources of prior knowledge:
     - Showdown's data/random-battles/gen9/sets.json: for each species, its possible roles, each
       with a move pool (4 moves are picked from it), abilities and tera types. Items are chosen
       by Showdown's team generator code, not listed in this file.
-    - The randbats stats (pkmn.github.io/randbats): how often each move, item, ability and tera
-      type actually appears for each species and role in generated teams. Use these as priors.
+    - The version 1 model gives each template equal weight and leaves hidden items unknown.
+      Public item reveals still update the estimate of what is currently held.
 
 Produces: a BeliefState (see interfaces.py) for any PublicState.
 """

@@ -24,6 +24,13 @@ REPORTS_DIR = REPO_ROOT / "reports"
 
 # The Showdown format we play. "gen9randombattle" = Generation 9, singles, random teams.
 BATTLE_FORMAT = "gen9randombattle"
+RANDOM_BATTLE_GENERATION = 9
+RANDOM_BATTLE_MOVE_SLOTS = 4
+
+# Use the same Showdown checkout that runs local battles.
+RANDOM_BATTLE_SETS_PATH = (
+    REPO_ROOT.parent / "pokemon-showdown" / "data" / "random-battles" / "gen9" / "sets.json"
+)
 
 # Hugging Face dataset with recorded human games.
 HF_REPLAY_DATASET = "HolidayOugi/pokemon-showdown-replays"
