@@ -4,6 +4,7 @@ from copy import deepcopy
 from io import StringIO
 
 import pytest
+from test_agent import public_sets as public_sets
 from test_damage import make_battle
 from test_payoff import add_reserve
 
