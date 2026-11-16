@@ -16,18 +16,28 @@ class TurnEffect:
     heal: float = 0.0
     protect: bool = False
     blocked_by_protect: bool = True
+    act_chance: float = 1.0
+    self_ko: bool = False
 
-    def outcomes(self) -> list[tuple[float, float, float, bool]]:
-        """Return probability, damage, recovery and protection for miss/low/high outcomes."""
+    def outcomes(self) -> list[tuple[float, float, float, bool, bool]]:
+        """Branch on inability to act, then miss/low/high; self-KO requires an attempt."""
         low, high = self.damage
-        if not all(math.isfinite(x) for x in (low, high, self.hit_chance, self.heal)):
+        if not all(
+            math.isfinite(x) for x in (low, high, self.hit_chance, self.heal, self.act_chance)
+        ):
             raise ValueError("Move effects must be finite")
-        if not 0 <= low <= high or not 0 <= self.hit_chance <= 1 or not 0 <= self.heal <= 1:
+        if (
+            not 0 <= low <= high
+            or not 0 <= self.hit_chance <= 1
+            or not 0 <= self.heal <= 1
+            or not 0 <= self.act_chance <= 1
+        ):
             raise ValueError("Invalid move effect range or probability")
         return [
-            (1 - self.hit_chance, 0.0, 0.0, False),
-            (self.hit_chance / 2, low, self.heal, self.protect),
-            (self.hit_chance / 2, high, self.heal, self.protect),
+            (1 - self.act_chance, 0.0, 0.0, False, False),
+            (self.act_chance * (1 - self.hit_chance), 0.0, 0.0, False, self.self_ko),
+            (self.act_chance * self.hit_chance / 2, low, self.heal, self.protect, self.self_ko),
+            (self.act_chance * self.hit_chance / 2, high, self.heal, self.protect, self.self_ko),
         ]
 
 
@@ -65,7 +75,7 @@ def turn_value(
                 target = 1 - actor
                 if hp[actor] <= 0 or hp[target] <= 0:
                     continue
-                _, damage, heal, protection = results[actor]
+                _, damage, heal, protection, self_ko = results[actor]
                 protected[actor] = protection
                 dealt = 0.0
                 if not (protected[target] and effects[actor].blocked_by_protect):
@@ -75,6 +85,9 @@ def turn_value(
                 restored = min(1 - hp[actor], heal)
                 hp[actor] += restored
                 recovered[actor] += restored
+                if self_ko:
+                    lost[actor] += hp[actor]
+                    hp[actor] = 0.0
             utility = lost[1] - lost[0] + recovered[0] - recovered[1]
             utility += ko_bonus * (int(hp[1] <= 0) - int(hp[0] <= 0))
             value += chance * utility

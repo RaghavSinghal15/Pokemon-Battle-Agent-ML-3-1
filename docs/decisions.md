@@ -24,6 +24,23 @@ accuracy as the main metric (ignores probability quality, which the decision eng
 **Why:** 1,000 games distinguishes differences of about 4.5 points; fixing criteria before
 results prevents goalpost-moving.
 
+## 2026-11-17: F4 domain-review decisions and failure cases (F, Devam)
+**Decision:** Raghav accepted concrete move columns, k = 0.25, no new tera rows, zero
+outgoing credit against unseen switch targets, and inclusion weights within classes in
+PR #44. Remove impossible class mass and rescale only when the full move-pool belief or
+team count proves impossibility. Retain errors for missing information or zero remaining
+forecast mass. Skip 0/0-HP Illusion entries when counting revealed members and reserves.
+**Alternatives:** abort the whole table for one unsupported candidate; silently invent
+missing moves; treat unsupported moves as ordinary damage without disclosing it.
+**Why:** these were the main failures in the reviewer's integration games. Charge moves
+now score as a zero-damage first turn, Protect variants as plain Protect, and self-KO
+attacks as damage plus the user's remaining HP loss on an attempt. Sleep/freeze use fixed
+1/3 and 0.2 action chances, separate from accuracy. These are explicit approximations,
+not exact game mechanics; details and exceptions are in [f4-implementation.md](f4-implementation.md).
+Hand-built regressions cover the four requested groups, including misses, inability to act,
+earlier KOs, incomplete move evidence and phantom reserves. Status/setup utility beyond
+healing and protection remains a non-blocking follow-up, not part of these repairs.
+
 ## 2026-11-14: Provisional F4 payoff policy for domain review (F, Devam)
 **Decision:** implement the original stub's individual-move columns plus an aggregate switch
 column. Preserve class probability mass using explicitly heuristic inclusion weights. Score

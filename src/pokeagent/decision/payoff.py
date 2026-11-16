@@ -42,7 +42,7 @@ def _opponent_moves(battle: Battle, beliefs: BeliefState) -> list[tuple[Move, fl
         raise PayoffUnavailable(f"Invalid opponent move candidate: {error}") from error
 
 
-def _probabilities(moves, switch_available, class_probs):
+def _probabilities(moves, switch_available, class_probs, complete_move_pool):
     if class_probs is None:
         return None
     if set(class_probs) != set(ACTION_CLASSES):
@@ -57,16 +57,20 @@ def _probabilities(moves, switch_available, class_probs):
         c: sum(w for (_, w), name in zip(moves, classes, strict=True) if name == c)
         for c in ACTION_CLASSES[:2]
     }
+    mass = dict(class_probs)
     for name, weight in weights.items():
-        if class_probs[name] > 0 and weight == 0:
-            raise PayoffUnavailable(f"Positive {name} probability has no move candidates")
-    if class_probs["switch"] > 0 and not switch_available:
-        raise PayoffUnavailable("Positive switch probability has no possible reserve")
-    result = [
-        class_probs[c] / total * w / weights[c] for (_, w), c in zip(moves, classes, strict=True)
-    ]
+        if mass[name] > 0 and weight == 0:
+            if not complete_move_pool:
+                raise PayoffUnavailable(f"Positive {name} probability has no move candidates")
+            mass[name] = 0.0
+    if not switch_available:
+        mass["switch"] = 0.0
+    total = sum(mass.values())
+    if total == 0:
+        raise PayoffUnavailable("Forecast assigns no mass to available actions")
+    result = [mass[c] / total * w / weights[c] for (_, w), c in zip(moves, classes, strict=True)]
     if switch_available:
-        result.append(class_probs["switch"] / total)
+        result.append(mass["switch"] / total)
     return result
 
 
@@ -77,7 +81,8 @@ def build_payoff_table(
 
     Two damage endpoints, misses and ordering ties are averaged AFTER HP capping and KO
     cancellation. Within-class weights use move-inclusion beliefs as a heuristic, not a
-    calibrated choice prediction. Missing positive-mass candidates raise PayoffUnavailable;
+    calibrated choice prediction. Impossible classes are removed; missing information raises
+    PayoffUnavailable rather than inventing moves or assigning a new uniform forecast.
     None forecasts support minimax. Emits PayoffApproximationWarning for omitted mechanics.
     New voluntary tera options are deferred; already changed types are retained.
     """
@@ -90,6 +95,8 @@ def build_payoff_table(
     opp_key = next(k for k, mon in battle.opponent_team.items() if mon is opp)
     rows = [(Action("move", m.id), me_key, m) for m in battle.available_moves]
     for mon in battle.available_switches:
+        if mon.max_hp <= 0 or mon.current_hp_fraction <= 0:
+            continue
         key = next(k for k, candidate in battle.team.items() if candidate is mon)
         rows.append((Action("switch", mon.species), key, None))
     if not rows or len({(a.kind, a.name) for a, _, _ in rows}) != len(rows):
@@ -99,15 +106,20 @@ def build_payoff_table(
         raise PayoffUnavailable(
             "No opponent move candidates; supply public priors or revealed moves"
         )
+    # Illusion can leave a 0/0-HP disguise object behind. It is not a real team member.
+    observed = {k: mon for k, mon in battle.opponent_team.items() if mon.max_hp > 0}
     reserves = [
-        (k, 1) for k, mon in battle.opponent_team.items() if mon is not opp and not mon.fainted
+        (k, 1)
+        for k, mon in observed.items()
+        if mon is not opp and not mon.fainted and mon.current_hp_fraction > 0
     ]
     # Observed |teamsize| metadata, never the opponent's hidden team request.
     team_size = battle._team_size.get(battle.opponent_role, RANDOM_BATTLE_TEAM_SIZE)
-    unseen = max(0, team_size - len(battle.opponent_team))
+    unseen = max(0, team_size - len(observed))
     if unseen:
         reserves.append((None, unseen))
-    probs = _probabilities(moves, bool(reserves), class_probs)
+    belief = beliefs.get(opp.species)
+    probs = _probabilities(moves, bool(reserves), class_probs, bool(belief and belief.move_probs))
     columns = [Action("move", m.id) for m, _ in moves]
     if reserves:
         columns.append(Action("switch", SWITCH_COLUMN))

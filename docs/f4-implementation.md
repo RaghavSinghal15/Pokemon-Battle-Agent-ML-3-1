@@ -1,8 +1,8 @@
 # F4: provisional one-turn payoff policy
 
 This is the implementation companion to [the design proposal](https://github.com/RaghavSinghal15/Pokemon-Battle-Agent-ML-3-1/pull/43).
-It implements issue #33 for review; the choices below have **not** been approved by the domain
-reviewer. F1/F2/F3 and the design proposal remain separate pending reviews. No change is made
+It implements issue #33. Raghav accepted the core provisional choices in his review of
+PRs #43/#44; the failure-case fixes described below await re-review. No change is made
 to the shared dataclasses or the live agent. F5 integration and a win-rate claim are outside F4.
 
 ## What the builder returns
@@ -31,10 +31,18 @@ heuristic switch-target prior, not a prediction of a strong player's preferred r
 Unseen targets receive zero outgoing damage credit, a conservative bound rather than an
 invented immunity or guessed species. Revealed reserves use their observed species and HP.
 
-Invalid class distributions, positive mass with no candidates, impossible positive switch
-mass, invalid state, and failed calculations raise `PayoffUnavailable`. Missing forecasts
+Impossible classes are removed and the remaining forecast mass is rescaled to sum to one.
+Switching is impossible when there are no living revealed or possible unseen reserves. A
+move class is ruled out only when the supplied full move-pool belief has no candidates in
+that class. Revealed moves alone are incomplete evidence and cannot rule a class out.
+If removing impossible classes leaves zero mass, the caller must supply a better forecast;
+we do not invent a uniform distribution. Illusion's 0/0-HP disguise entries are skipped and
+do not count as revealed team members; other reserves with zero HP are not switch targets.
+
+Invalid class distributions, genuinely missing positive-mass candidates, invalid state,
+and failed calculations raise `PayoffUnavailable`. Missing forecasts
 produce `opp_probs=None` for F1. F2 needs an explicit distribution. No mass is silently
-redistributed to compensate for missing candidates; F5 must choose a labelled legal fallback.
+redistributed to compensate for missing information; F5 must choose a labelled legal fallback.
 
 ## Scoring and chance
 
@@ -60,12 +68,12 @@ The incoming teammate, not the outgoing one, receives an opposing attack after a
 |---|---|---|
 | Damage | Pinned poke-env calculator for both directions and chosen switch targets; KO/HP caps | Range endpoints and damage mechanics are evaluated at the scenario's starting state, not recalculated after each earlier event. HP-dependent power, drain, recoil, Life Orb self-damage, criticals and secondaries can be misvalued. |
 | Order | Base move priority, Prankster status priority; Speed stages, Scarf, paralysis, Tailwind and common weather speed abilities; Trick Room; 50/50 Speed ties | Other ability/item/effect modifiers and integer rounding are not fully simulated. Recognized random/late-order items raise an unavailable-table error. |
-| Accuracy | Listed accuracy plus accuracy/evasion stages; always-hit metadata; No Guard; paralysis action failure | Weather-specific accuracy, other abilities/items, confusion and conditional move failures are not fully simulated. Sleep/freeze actions raise an unavailable-table error. |
-| Protection | Protect/Detect with a consecutive-use success approximation; blocks protectable damage unless bypassed | Other protection moves with contact punishment or other side effects are explicit unsupported cases. |
+| Accuracy | Listed accuracy plus accuracy/evasion stages; always-hit metadata; No Guard; paralysis action failure | Sleep uses a fixed 1/3 action chance and freeze 0.2, independently of accuracy. This is not inference of the hidden sleep timer. Sleep-usable and self-thawing move metadata bypass those penalties. Weather-specific accuracy, other abilities/items, confusion and conditional failures are omitted. |
+| Protection | Protect variants with a consecutive-use success approximation; blocks protectable damage unless bypassed | King's Shield, Spiky Shield, Baneful Bunker, Silk Trap and Burning Bulwark are treated as plain Protect. Contact punishment and differences in status blocking are omitted. |
 | Healing | Fixed recovery metadata, capped to missing HP when the action occurs | Weather-dependent/delayed recovery and other status utility are omitted. |
 | Switch entry | Stealth Rock and Spikes with integer damage, type matchup, known Boots/Magic Guard and simple grounding | Sticky Web, Toxic Spikes, temporary grounding effects, Regenerator, other switch-in/out abilities and ability suppression are omitted. No extra arbitrary switch penalty is added. |
 | Status/setup | Zero beyond supported immediate recovery/protection | Poisoning, stat boosts, newly laid hazards, blocking/forcing moves and long-term value are not simulated. Zero score is this policy's blind spot, not a claim these moves do nothing. |
-| Special actions | Recharge contributes no attack damage; existing tera state affects typing | Charge-turn and self-KO attacks raise an unavailable-table error; new voluntary tera choices and pivot follow-up switches are deferred. |
+| Special actions | Recharge and charge attacks contribute no immediate damage; self-KO attacks deal estimated damage and faint the user on an attempted move; existing tera state affects typing | Charge attacks are always treated as their first charging turn, even with Power Herb, bypassing weather or a tracked second turn. Self-KO happens on misses/protection, but not inability to act or an earlier KO; conditional self-KO metadata is approximated as unconditional on an attempt. New voluntary tera choices and pivot follow-up switches are deferred. |
 
 Every successful build emits `PayoffApproximationWarning` summarising these omissions and
 pointing here. Callers may filter that warning after explicitly accepting this policy, but

@@ -33,6 +33,8 @@ SEED = 464
 
 # Provisional one-turn decision policy, not fitted model parameters.
 PAYOFF_KO_BONUS = 0.25
+PAYOFF_SLEEP_ACT_CHANCE = 1 / 3  # Approximation; the hidden sleep timer is not inferred.
+PAYOFF_FREEZE_ACT_CHANCE = 0.2
 RANDOM_BATTLE_TEAM_SIZE = 6
 
 # Local Showdown server started with `node pokemon-showdown start --no-security`.

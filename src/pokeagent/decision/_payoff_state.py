@@ -16,6 +16,7 @@ from poke_env.battle import (
 )
 from poke_env.calc.damage_calc_gen9 import calculate_damage
 
+from pokeagent.config import PAYOFF_FREEZE_ACT_CHANCE, PAYOFF_SLEEP_ACT_CHANCE
 from pokeagent.decision._turn import TurnEffect
 from pokeagent.decision.damage import random_battle_stats
 
@@ -125,19 +126,24 @@ def move_effect(
     if move is None or move.id == "recharge":
         return TurnEffect()
     attacker = battle.get_pokemon(attacker_key)
-    if attacker.status in (Status.SLP, Status.FRZ):
-        raise PayoffUnavailable("Sleep/freeze action availability is not modelled")
     can_act = 0.75 if attacker.status == Status.PAR else 1.0
+    if attacker.status == Status.SLP and not move.entry.get("sleepUsable"):
+        can_act = PAYOFF_SLEEP_ACT_CHANCE
+    if attacker.status == Status.FRZ and not move.entry.get("flags", {}).get("defrost"):
+        can_act = PAYOFF_FREEZE_ACT_CHANCE
     if move.is_protect_move:
-        if move.id not in ("protect", "detect"):
-            raise PayoffUnavailable(f"Unsupported protection side effect: {move.id}")
-        return TurnEffect(protect=True, hit_chance=can_act / (3**attacker.protect_counter))
+        # Contact punishments and King's Shield's status exception are omitted in v1.
+        return TurnEffect(
+            protect=True, hit_chance=1 / (3**attacker.protect_counter), act_chance=can_act
+        )
     if move.category == MoveCategory.STATUS:
-        return TurnEffect(heal=move.heal, hit_chance=can_act)
-    if move.entry.get("flags", {}).get("charge") or move.entry.get("selfdestruct"):
-        raise PayoffUnavailable(f"Unsupported multi-turn or self-KO move: {move.id}")
+        return TurnEffect(heal=move.heal, act_chance=can_act)
+    if move.entry.get("flags", {}).get("charge"):
+        # A conservative first-charge-turn approximation, even with weather/Power Herb.
+        return TurnEffect()
+    self_ko = bool(move.entry.get("selfdestruct"))
     if target_key is None:
-        return TurnEffect()  # Conservative zero credit for attacking an unseen switch target.
+        return TurnEffect(self_ko=self_ko, act_chance=can_act)
     target = battle.get_pokemon(target_key)
     try:
         low, high = calculate_damage(attacker_key, target_key, move, battle)
@@ -154,7 +160,9 @@ def move_effect(
         accuracy = 1.0
     return TurnEffect(
         damage=(low / target.stats["hp"], high / target.stats["hp"]),
-        hit_chance=accuracy * can_act,
+        hit_chance=accuracy,
+        act_chance=can_act,
+        self_ko=self_ko,
         blocked_by_protect=bool(move.entry.get("flags", {}).get("protect"))
         and not move.breaks_protect,
     )

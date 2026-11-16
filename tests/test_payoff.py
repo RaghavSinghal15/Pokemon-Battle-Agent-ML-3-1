@@ -104,10 +104,10 @@ def test_revelation_overrides_prior_without_mutating_it():
     assert beliefs["blissey"].move_probs["seismictoss"] == 0
 
 
-def test_missing_attack_mass_is_not_discarded():
+def test_full_status_only_pool_removes_impossible_attack_mass():
     battle, beliefs = table_battle(candidates={"protect": 1})
-    with pytest.raises(PayoffUnavailable, match="attack.*no move candidates"):
-        build_payoff_table(battle, beliefs, {"attack": 0.6, "non_damaging": 0.4, "switch": 0})
+    table = build(battle, beliefs, {"attack": 0.6, "non_damaging": 0.4, "switch": 0})
+    assert table.opp_probs == [1.0]
 
 
 @pytest.mark.parametrize(
@@ -124,10 +124,10 @@ def test_bad_forecasts(probs):
         build_payoff_table(battle, beliefs, probs)
 
 
-def test_impossible_switch_forecast_is_not_renormalised():
+def test_impossible_switch_forecast_is_renormalised():
     battle, beliefs = table_battle()
-    with pytest.raises(PayoffUnavailable, match="no possible reserve"):
-        build_payoff_table(battle, beliefs, {"attack": 0.8, "non_damaging": 0, "switch": 0.2})
+    table = build(battle, beliefs, {"attack": 0.8, "non_damaging": 0, "switch": 0.2})
+    assert table.opp_probs == [1.0]
 
 
 def test_real_damage_order_and_hp_capping():
@@ -224,11 +224,10 @@ def test_input_isolation():
     assert forecast == {"attack": 1, "non_damaging": 0, "switch": 0}
 
 
-def test_sleep_unavailable():
+def test_sleep_table_is_available():
     battle, beliefs = table_battle()
     battle.active_pokemon.status = Status.SLP
-    with pytest.raises(PayoffUnavailable, match="Sleep/freeze"):
-        build_payoff_table(battle, beliefs, None)
+    assert build(battle, beliefs).values[0][0] < 0
 
 
 def test_recharge_still_takes_reply_damage():
@@ -257,12 +256,11 @@ def test_current_tera_type_is_respected_without_adding_new_tera_rows():
     assert not any(action.tera for action in table.our_actions)
 
 
-def test_known_sleep_and_calc_errors_leave_input_stats_untouched():
+def test_sleep_approximation_leaves_input_stats_untouched():
     battle, beliefs = table_battle()
     battle.active_pokemon.status = Status.SLP
     before = deepcopy(battle.opponent_active_pokemon.stats)
-    with pytest.raises(PayoffUnavailable):
-        build_payoff_table(battle, beliefs, None)
+    build(battle, beliefs)
     assert before == battle.opponent_active_pokemon.stats
 
 
