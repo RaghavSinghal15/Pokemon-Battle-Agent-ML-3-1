@@ -62,7 +62,11 @@ def describe_repo(repo: str) -> list[str]:
     print(f"  file types: {dict(exts.most_common(6))}")
     tops = Counter(f.split("/")[0] if "/" in f else "(root)" for f, _ in files)
     print(f"  top-level folders: {dict(tops.most_common(8))}")
-    matches = [(f, s) for f, s in files if BATTLE_FORMAT in f.lower().replace("_", "")]
+    # Files are named like "[Gen 9] RANDOMBATTLE_part1.parquet". Compare letters and digits
+    # only ("gen9randombattlepart1parquet"), so the brackets and spaces don't hide a match.
+    matches = [
+        (f, s) for f, s in files if re.sub(r"[^a-z0-9]", "", f.lower()).startswith(BATTLE_FORMAT)
+    ]
     print(f"  files with '{BATTLE_FORMAT}' in the name: {len(matches)}")
     for f, s in matches[:10]:
         print(f"    {f}  ({s / 1e6:.1f} MB)")
