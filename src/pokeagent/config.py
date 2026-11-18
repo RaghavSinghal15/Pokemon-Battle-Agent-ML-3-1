@@ -27,6 +27,18 @@ BATTLE_FORMAT = "gen9randombattle"
 
 # Hugging Face dataset with recorded human games.
 HF_REPLAY_DATASET = "HolidayOugi/pokemon-showdown-replays"
+# The exact dataset version (a commit of the dataset repo) we download. Pinning it means the
+# owner adding or changing files later cannot silently change our data. Same revision the
+# parser was checked against (docs/08, C5).
+HF_REPLAY_REVISION = "15a0a455dbcb7f5c07c2dd670f9252f275d4ddc8"
+# The dataset stores each format in its own Parquet files; ours start with this name
+# ("[Gen 9] RANDOMBATTLE_part1.parquet", "_part2", ...).
+HF_REPLAY_FILE_PREFIX = "[Gen 9] RANDOMBATTLE"
+
+# Where the downloaded Gen 9 Random Battle table is written (one row per battle, unfiltered).
+RAW_BATTLES_PATH = RAW_DIR / f"{BATTLE_FORMAT}.parquet"
+# The filtered table every later step reads (role C's exporter reads this path by default).
+BATTLES_PATH = INTERIM_DIR / "battles.parquet"
 
 # One seed for everything random (splits, model training, sampling), so results reproduce.
 SEED = 464

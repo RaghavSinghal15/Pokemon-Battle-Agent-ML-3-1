@@ -15,6 +15,19 @@ Template:
 
 ---
 
+## 2026-11-18: How the replay data is downloaded and stored (B, Rishi)
+**Decision:** read only the dataset's `[Gen 9] RANDOMBATTLE_part*.parquet` files at a pinned
+dataset revision, keep rows whose `formatid` is exactly `gen9randombattle`, and write one local
+Parquet table with the log plus summary columns (ratings, winner, tie, turns, upload time) read
+from the log once. Ratings are read per player from the `|player|` lines.
+**Alternatives:** `datasets.load_dataset` over the whole 34-million-row dataset (scans every
+format); keeping close variants such as Blitz (different time pressure, so different play);
+using the dataset's single `rating` column (one number per game, often empty, and we need both
+players' ratings to filter); CSV (larger and slower, loses column types).
+**Why:** reading only our files is far less data to stream. A pinned revision makes the
+download reproducible. Storing the summary columns means filtering and splitting never parse
+logs again. The `ratings` column matches what role C's exporter already reads.
+
 ## 2026-11-13: Draft evaluation plan, written before any results (A, Raghav)
 **Decision:** 1,000 games per opponent (random, max power, heuristics) with Wilson intervals;
 heuristics is the headline opponent; log loss is the opponent model's main metric; success
