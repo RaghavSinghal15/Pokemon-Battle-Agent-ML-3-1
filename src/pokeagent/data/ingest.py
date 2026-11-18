@@ -173,7 +173,8 @@ def newest_cutoff(fs, files: list[str], revision: str, max_battles: int) -> tupl
     import pyarrow.parquet as pq
 
     times_per_block = []  # (file, row group, upload times of our battles in it)
-    for name in files:
+    for number, name in enumerate(files, start=1):
+        print(f"  [{number}/{len(files)}] {name}", flush=True)
         with _open_remote(fs, revision, name) as handle:
             source = pq.ParquetFile(handle)
             for group in range(source.num_row_groups):
@@ -237,6 +238,7 @@ def download_replays(
                 for group in range(source.num_row_groups):
                     if blocks is not None and (name, group) not in blocks:
                         continue  # nothing new enough in this block: skip the download
+                    print(f"  downloading {name}, block {group + 1}", flush=True)
                     for batch in source.iter_batches(
                         batch_size=2_000, row_groups=[group], columns=SOURCE_COLUMNS
                     ):
@@ -253,7 +255,7 @@ def download_replays(
                             writer = pq.ParquetWriter(tmp_path, table.schema)
                         writer.write_table(table)
                         written += len(battles)
-            print(f"  {name}: {written:,} battles so far")
+            print(f"  {name}: {written:,} battles so far", flush=True)
             if max_battles is not None and written >= max_battles:
                 break
     finally:
