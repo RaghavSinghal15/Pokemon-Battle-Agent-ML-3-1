@@ -2,6 +2,8 @@
 
 import json
 
+import pandas as pd
+
 from pokeagent.data.ingest import BATTLE_COLUMNS, battles_from_rows, summarise_log, to_id
 
 
@@ -92,7 +94,6 @@ def test_battles_from_rows_skips_missing_logs():
 def test_download_streams_batches_and_respects_max_battles(tmp_path, monkeypatch):
     """Run download_replays on a fake local "dataset" file instead of Hugging Face."""
     import huggingface_hub
-    import pandas as pd
 
     from pokeagent.data import ingest
 
@@ -171,3 +172,69 @@ def test_only_standard_gen9_files_are_listed(monkeypatch):
         "[Gen 9] RANDOMBATTLE_part2.parquet",
         "[Gen 9] RANDOMBATTLE_part10.parquet",
     ]
+
+
+# ---------------------------------------------------------------------------------------------
+# B3: filtering
+# ---------------------------------------------------------------------------------------------
+
+
+def battle_table(rows: list[tuple]) -> pd.DataFrame:
+    """Hand-made battle table: (battle_id, rating_p1, rating_p2, winner, turns) per row."""
+    df = pd.DataFrame(rows, columns=["battle_id", "rating_p1", "rating_p2", "winner", "turns"])
+    return df.astype({"rating_p1": "Int64", "rating_p2": "Int64", "winner": "string"})
+
+
+def test_each_filter_drops_what_it_claims():
+    from pokeagent.data.filter import filter_steps
+
+    df = battle_table(
+        [
+            ("a", 1500, 1500, "p1", 20),  # kept
+            ("a", 1500, 1500, "p1", 20),  # duplicate id
+            ("b", 1500, 1500, None, 20),  # no winner (tie or unfinished)
+            ("c", 1500, 1500, "p2", 1),  # too short
+            ("d", 1500, 1100, "p1", 20),  # weaker player below the threshold
+            ("e", 1500, None, "p2", 20),  # one player unrated
+            ("f", 1300, 1300, "p2", 20),  # exactly at the threshold: kept
+        ]
+    )
+    kept, counts = filter_steps(df, min_rating=1300, min_turns=2)
+    assert sorted(kept["battle_id"]) == ["a", "f"]
+    assert [n for _, n in counts] == [7, 6, 5, 4, 2]
+
+
+def test_chosen_threshold_keeps_the_requested_fraction():
+    from pokeagent.data.filter import choose_min_rating, filter_battles
+
+    # 100 usable games whose lower-rated player is rated 1000, 1010, ..., 1990.
+    df = battle_table([(str(i), 1000 + 10 * i, 2500, "p1", 10) for i in range(100)])
+    threshold = choose_min_rating(df, keep_fraction=0.35, min_turns=2)
+    kept = filter_battles(df, threshold, min_turns=2)
+    assert 34 <= len(kept) <= 36
+    assert kept["rating_p1"].min() >= threshold
+
+
+def test_threshold_ignores_unusable_and_unrated_games():
+    from pokeagent.data.filter import choose_min_rating
+
+    usable = [(str(i), 1500, 1500, "p1", 10) for i in range(10)]
+    junk = [("x", 1000, 1000, None, 10), ("y", None, 1000, "p1", 10), ("z", 1000, 1000, "p1", 1)]
+    assert choose_min_rating(battle_table(usable + junk), keep_fraction=0.5) == 1500
+
+
+def test_filter_battle_file_copies_kept_rows_once(tmp_path):
+    from pokeagent.data.filter import filter_battle_file
+    from pokeagent.data.ingest import battles_from_rows, load_battles
+
+    rows = [make_row("g-1"), make_row("g-1"), make_row("g-2", r2="900"), make_row("g-3")]
+    for row in rows:
+        row["formatid"] = "gen9randombattle"
+    raw = tmp_path / "raw.parquet"
+    battles_from_rows(rows).to_parquet(raw)
+
+    result = filter_battle_file(raw, tmp_path / "battles.parquet", min_rating=1300)
+    kept = load_battles(tmp_path / "battles.parquet")
+    assert sorted(kept["battle_id"]) == ["g-1", "g-3"]
+    assert kept["log"].str.contains("|win|").all()  # logs are copied, not just ids
+    assert result["counts"][-1][1] == 2 and result["keep_fraction"] is None

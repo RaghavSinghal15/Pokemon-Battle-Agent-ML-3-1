@@ -37,6 +37,14 @@ HF_REPLAY_FILE_PREFIX = "[Gen 9] RANDOMBATTLE"
 
 # Where the downloaded Gen 9 Random Battle table is written (one row per battle, unfiltered).
 RAW_BATTLES_PATH = RAW_DIR / f"{BATTLE_FORMAT}.parquet"
+# Filtering (role B, data/filter.py). Games shorter than this many turns are dropped: they are
+# mostly early forfeits and teach the model almost nothing.
+MIN_TURNS = 2
+# We keep the battles whose LOWER-rated player is in the top this-fraction of the rating
+# distribution, so both players are reasonably skilled. The rating cut-off this produces is
+# printed by the data build and recorded in reports/data_report.md.
+RATING_KEEP_FRACTION = 0.35
+
 # The filtered table every later step reads (role C's exporter reads this path by default).
 BATTLES_PATH = INTERIM_DIR / "battles.parquet"
 
