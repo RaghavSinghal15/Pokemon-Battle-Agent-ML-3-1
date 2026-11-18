@@ -116,6 +116,36 @@ def test_download_streams_batches_and_respects_max_battles(tmp_path, monkeypatch
     assert len(everything) == 5  # the Blitz game is dropped
 
 
+def test_download_keeps_the_newest_battles(tmp_path, monkeypatch):
+    """With a limit, the newest battles are kept even if they sit at the end of the file."""
+    import huggingface_hub
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from pokeagent.data import ingest
+
+    rows = []
+    for i in range(10):
+        row = make_row(f"gen9randombattle-{i}")
+        row["uploadtime"] = 1_700_000_000 + 100 * i  # later rows are newer
+        rows.append(row)
+    newest_blitz = make_row("blitz-99", formatid="gen9randombattleblitz")
+    newest_blitz["uploadtime"] = 1_800_000_000  # newest of all, but not our format
+    rows.append(newest_blitz)
+    source = tmp_path / "part1.parquet"
+    pq.write_table(pa.Table.from_pylist(rows), source, row_group_size=3)  # several blocks
+
+    class LocalFileSystem:
+        def open(self, path, mode):
+            return open(source, mode)
+
+    monkeypatch.setattr(huggingface_hub, "HfFileSystem", LocalFileSystem)
+    monkeypatch.setattr(ingest, "list_source_files", lambda revision: ["part1.parquet"])
+
+    df = ingest.load_battles(ingest.download_replays(tmp_path / "raw.parquet", max_battles=4))
+    assert sorted(df["battle_id"]) == [f"gen9randombattle-{i}" for i in (6, 7, 8, 9)]
+
+
 def test_only_standard_gen9_files_are_listed(monkeypatch):
     import huggingface_hub
 

@@ -158,6 +158,42 @@ def list_source_files(revision: str = HF_REPLAY_REVISION) -> list[str]:
     return sorted(ours, key=part_number)
 
 
+def _open_remote(fs, revision: str, name: str):
+    return fs.open(f"datasets/{HF_REPLAY_DATASET}@{revision}/{name}", "rb")
+
+
+def newest_cutoff(fs, files: list[str], revision: str, max_battles: int) -> tuple[int, list]:
+    """First pass: find the upload time of the `max_battles`-th newest battle.
+
+    Reads only the small `uploadtime` and `formatid` columns (a few MB in total, not the logs).
+    Also returns which (file, row group) blocks contain at least one battle that new, so the
+    second pass downloads only those blocks.
+    """
+    import numpy as np
+    import pyarrow.parquet as pq
+
+    times_per_block = []  # (file, row group, upload times of our battles in it)
+    for name in files:
+        with _open_remote(fs, revision, name) as handle:
+            source = pq.ParquetFile(handle)
+            for group in range(source.num_row_groups):
+                block = source.read_row_group(group, columns=["uploadtime", "formatid"])
+                ours = block.column("formatid").to_numpy(zero_copy_only=False) == BATTLE_FORMAT
+                times = block.column("uploadtime").to_numpy(zero_copy_only=False)[ours]
+                times_per_block.append((name, group, times))
+    all_times = np.concatenate([times for _, _, times in times_per_block])
+    if len(all_times) == 0:
+        raise RuntimeError(f"No {BATTLE_FORMAT} battles found")
+    if len(all_times) <= max_battles:
+        cutoff = int(all_times.min())
+    else:
+        # np.partition puts the k-th largest value in its sorted place without a full sort.
+        cutoff = int(np.partition(all_times, len(all_times) - max_battles)[-max_battles])
+    blocks = [(name, group) for name, group, times in times_per_block if (times >= cutoff).any()]
+    print(f"{len(all_times):,} {BATTLE_FORMAT} battles in the dataset; keeping the newest")
+    return cutoff, blocks
+
+
 def download_replays(
     out_path: Path = RAW_BATTLES_PATH,
     max_battles: int | None = None,
@@ -165,11 +201,13 @@ def download_replays(
 ) -> Path:
     """Stream Gen 9 Random Battles from Hugging Face into one local Parquet file.
 
-    "Streaming" means we read the remote files a few thousand rows at a time and write each
-    batch straight to disk, so the full dataset never has to fit in memory.
+    "Streaming" means we read the remote files one block at a time and write each block
+    straight to disk, so the full dataset never has to fit in memory.
 
-    `max_battles` stops early, e.g. 5,000 battles for quick development. Battles are taken in
-    file order. Returns the path written.
+    With `max_battles` (e.g. 5,000 for quick development) we keep the NEWEST battles, not the
+    first ones in the files: the first rows of a file can all come from the same few days, and
+    the newest games are the closest to the game our agent will actually play (Showdown updates
+    the Random Battle sets from time to time). Returns the path written.
     """
     import pyarrow as pa
     import pyarrow.parquet as pq
@@ -178,32 +216,44 @@ def download_replays(
     files = list_source_files(revision)
     if not files:
         raise RuntimeError(f"No files starting with {HF_REPLAY_FILE_PREFIX!r} in the dataset")
+    fs = HfFileSystem()
+
+    if max_battles is None:
+        cutoff = None
+        blocks = None  # every block
+    else:
+        print("Pass 1: reading upload times to find the newest battles ...")
+        cutoff, blocks = newest_cutoff(fs, files, revision, max_battles)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = out_path.with_suffix(".parquet.tmp")  # renamed only when complete
-    fs = HfFileSystem()
     writer = None
     written = 0
+    print("Pass 2: downloading the battles ...")
     try:
         for name in files:
-            remote = f"datasets/{HF_REPLAY_DATASET}@{revision}/{name}"
-            print(f"Reading {name} ...")
-            with fs.open(remote, "rb") as handle:
+            with _open_remote(fs, revision, name) as handle:
                 source = pq.ParquetFile(handle)
-                for batch in source.iter_batches(batch_size=2_000, columns=SOURCE_COLUMNS):
-                    battles = battles_from_rows(batch.to_pylist())
-                    if max_battles is not None:
-                        battles = battles.head(max_battles - written)
-                    if battles.empty:
-                        continue
-                    table = pa.Table.from_pandas(battles, preserve_index=False)
-                    if writer is None:
-                        writer = pq.ParquetWriter(tmp_path, table.schema)
-                    writer.write_table(table)
-                    written += len(battles)
-                    if max_battles is not None and written >= max_battles:
-                        break
-            print(f"  {written:,} battles so far")
+                for group in range(source.num_row_groups):
+                    if blocks is not None and (name, group) not in blocks:
+                        continue  # nothing new enough in this block: skip the download
+                    for batch in source.iter_batches(
+                        batch_size=2_000, row_groups=[group], columns=SOURCE_COLUMNS
+                    ):
+                        battles = battles_from_rows(batch.to_pylist())
+                        if cutoff is not None:
+                            battles = battles[battles["upload_time"] >= cutoff]
+                        if max_battles is not None:
+                            # Several battles can share the cut-off second; stop at the limit.
+                            battles = battles.head(max_battles - written)
+                        if battles.empty:
+                            continue
+                        table = pa.Table.from_pandas(battles, preserve_index=False)
+                        if writer is None:
+                            writer = pq.ParquetWriter(tmp_path, table.schema)
+                        writer.write_table(table)
+                        written += len(battles)
+            print(f"  {name}: {written:,} battles so far")
             if max_battles is not None and written >= max_battles:
                 break
     finally:
