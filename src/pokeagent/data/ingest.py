@@ -146,7 +146,10 @@ def list_source_files(revision: str = HF_REPLAY_REVISION) -> list[str]:
     from huggingface_hub import HfApi
 
     files = HfApi().list_repo_files(HF_REPLAY_DATASET, repo_type="dataset", revision=revision)
-    ours = [f for f in files if f.startswith(HF_REPLAY_FILE_PREFIX) and f.endswith(".parquet")]
+    # Only "<prefix>.parquet" or "<prefix>_partN.parquet". This skips variants stored in their
+    # own files, such as "[Gen 9] RANDOMBATTLE (BLITZ).parquet" (a faster-timer format).
+    pattern = re.compile(re.escape(HF_REPLAY_FILE_PREFIX) + r"(_part\d+)?\.parquet")
+    ours = [f for f in files if pattern.fullmatch(f)]
 
     def part_number(name: str) -> int:
         match = re.search(r"_part(\d+)\.parquet$", name)

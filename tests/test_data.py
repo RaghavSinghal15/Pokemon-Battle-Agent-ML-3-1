@@ -114,3 +114,30 @@ def test_download_streams_batches_and_respects_max_battles(tmp_path, monkeypatch
 
     everything = ingest.load_battles(ingest.download_replays(tmp_path / "all.parquet"))
     assert len(everything) == 5  # the Blitz game is dropped
+
+
+def test_only_standard_gen9_files_are_listed(monkeypatch):
+    import huggingface_hub
+
+    from pokeagent.data import ingest
+
+    names = [
+        "README.md",
+        "[Gen 9] RANDOMBATTLE (BLITZ).parquet",
+        "[Gen 9] RANDOMBATTLE_part10.parquet",
+        "[Gen 9] RANDOMBATTLE_part2.parquet",
+        "[Gen 9] RANDOMBATTLE_part1.parquet",
+        "[Gen 9] RANDOM DOUBLES BATTLE.parquet",
+        "[Gen 8] RANDOMBATTLE_part1.parquet",
+    ]
+
+    class FakeApi:
+        def list_repo_files(self, repo, repo_type, revision):
+            return names
+
+    monkeypatch.setattr(huggingface_hub, "HfApi", FakeApi)
+    assert ingest.list_source_files() == [
+        "[Gen 9] RANDOMBATTLE_part1.parquet",
+        "[Gen 9] RANDOMBATTLE_part2.parquet",
+        "[Gen 9] RANDOMBATTLE_part10.parquet",
+    ]
