@@ -31,8 +31,11 @@ One row per battle. Both files have the same columns:
 
 Source: the Gen 9 Random Battle files of `HolidayOugi/pokemon-showdown-replays` at the
 revision pinned in `config.HF_REPLAY_REVISION`, keeping only rows whose `formatid` is exactly
-`gen9randombattle`. Recreate with:
+`gen9randombattle`. Recreate everything (download, filter, split) with one command:
 
 ```bash
-python -c "from pokeagent.data.ingest import download_replays; download_replays(max_battles=5000)"
+python -m pokeagent.data.build --max-battles 5000     # quick sample for development
 ```
+
+It also writes `reports/results/data_summary.json` (counts and distributions only, no names).
+`data/splits.json` is never overwritten unless you pass `--overwrite-splits`.

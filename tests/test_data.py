@@ -238,3 +238,117 @@ def test_filter_battle_file_copies_kept_rows_once(tmp_path):
     assert sorted(kept["battle_id"]) == ["g-1", "g-3"]
     assert kept["log"].str.contains("|win|").all()  # logs are copied, not just ids
     assert result["counts"][-1][1] == 2 and result["keep_fraction"] is None
+
+
+# ---------------------------------------------------------------------------------------------
+# B4: splits
+# ---------------------------------------------------------------------------------------------
+
+
+def timed_battles(times: list[int]) -> pd.DataFrame:
+    return pd.DataFrame({"battle_id": [f"b{i}" for i in range(len(times))], "upload_time": times})
+
+
+def test_no_battle_is_in_two_splits_and_none_is_lost():
+    from pokeagent.data.splits import make_splits
+
+    battles = timed_battles(list(range(1000, 0, -1)))  # stored newest first, on purpose
+    splits = make_splits(battles)
+    sets = {name: set(ids) for name, ids in splits.items()}
+    assert not sets["train"] & sets["val"]
+    assert not sets["train"] & sets["test"]
+    assert not sets["val"] & sets["test"]
+    assert sets["train"] | sets["val"] | sets["test"] == set(battles["battle_id"])
+    assert [len(splits[n]) for n in ("train", "val", "test")] == [700, 150, 150]
+
+
+def test_test_is_newest_and_validation_sits_in_between():
+    from pokeagent.data.splits import make_splits
+
+    battles = timed_battles([5, 3, 9, 1, 7, 2, 8, 6, 4, 10] * 10)
+    battles["battle_id"] = [f"b{i}" for i in range(len(battles))]
+    splits = make_splits(battles, test_frac=0.2, val_frac=0.2)
+    time_of = battles.set_index("battle_id")["upload_time"]
+    train, val, test = (time_of.loc[splits[n]] for n in ("train", "val", "test"))
+    assert train.max() <= val.min()
+    assert val.max() <= test.min()
+    assert train.max() <= test.min()  # every test battle is at least as new as every train one
+
+
+def test_split_is_deterministic_whatever_the_row_order():
+    from pokeagent.data.splits import make_splits
+
+    battles = timed_battles([1, 1, 1, 2, 2, 2, 3, 3, 3, 3])
+    shuffled = battles.sample(frac=1, random_state=0)
+    assert make_splits(battles) == make_splits(shuffled)
+
+
+def test_split_refuses_duplicates_and_missing_times():
+    import pytest
+
+    from pokeagent.data.splits import make_splits
+
+    with pytest.raises(ValueError):
+        make_splits(pd.DataFrame({"battle_id": ["a", "a"], "upload_time": [1, 2]}))
+    missing = pd.DataFrame({"battle_id": ["a", "b"], "upload_time": [1, None]})
+    with pytest.raises(ValueError):
+        make_splits(missing.astype({"upload_time": "Int64"}))
+
+
+def test_split_file_round_trips_and_is_never_silently_overwritten(tmp_path):
+    import pytest
+
+    from pokeagent.data.splits import load_splits, make_splits, save_splits
+
+    splits = make_splits(timed_battles(list(range(100))))
+    path = save_splits(splits, tmp_path / "splits.json")
+    assert load_splits(path) == splits
+    # Role D's feature exporter requires exactly these three keys.
+    assert set(json.loads(path.read_text())) == {"train", "val", "test"}
+    with pytest.raises(FileExistsError):
+        save_splits(splits, path)
+
+
+def test_build_runs_end_to_end_on_fake_battles(tmp_path, monkeypatch, capsys):
+    """The one-command pipeline (filter, split, summary) on 300 fake battles."""
+    import random
+    import sys
+
+    from pokeagent.data import build
+    from pokeagent.data.ingest import battles_from_rows
+    from pokeagent.data.splits import load_splits
+
+    rng = random.Random(0)
+    rows = []
+    for i in range(300):
+        rated = rng.random() < 0.9
+        row = make_row(
+            f"gen9randombattle-{i}",
+            r1=str(rng.randint(1000, 1900)) if rated else "",
+            r2=str(rng.randint(1000, 1900)),
+            turns=rng.randint(1, 60),
+            winner=rng.choice(["Ash K.", "Misty", None]),
+        )
+        row["uploadtime"] = 1_700_000_000 + rng.randint(0, 10_000_000)
+        rows.append(row)
+    raw_path = tmp_path / "raw.parquet"
+    battles_from_rows(rows).to_parquet(raw_path)
+
+    paths = {
+        "RAW_BATTLES_PATH": raw_path,
+        "BATTLES_PATH": tmp_path / "battles.parquet",
+        "SPLITS_PATH": tmp_path / "splits.json",
+        "SUMMARY_PATH": tmp_path / "summary.json",
+    }
+    for name, value in paths.items():
+        monkeypatch.setattr(build, name, value)
+    monkeypatch.setattr(sys, "argv", ["build", "--skip-download"])
+    build.main()
+
+    summary = json.loads(paths["SUMMARY_PATH"].read_text())
+    counts = [n for _, n in summary["filtering"]["counts"]]
+    assert counts[0] == 300 and counts == sorted(counts, reverse=True)
+    assert summary["kept"]["battles"] == counts[-1] > 0
+    splits = load_splits(paths["SPLITS_PATH"])
+    assert sum(len(ids) for ids in splits.values()) == counts[-1]
+    assert "Ash" not in paths["SUMMARY_PATH"].read_text()  # no player names in the summary
