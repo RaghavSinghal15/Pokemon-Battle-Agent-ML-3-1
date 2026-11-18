@@ -13,13 +13,13 @@ modules are written properly with tests.
 
 | # | Question | Status | Answer in one line |
 |---|---|---|---|
-| 1 | Is the replay dataset what we think it is? | **Waiting on a laptop run (task B1)** | Script ready: `scripts/spikes/check_dataset.py`. The workspace that ran the other checks can't reach Hugging Face |
+| 1 | Is the replay dataset what we think it is? | **Yes** | 2.15 million Gen 9 Random Battle games; complete logs with ratings and dates; poke-env parses 99.8%; 88% of turns give a label (B1, laptop run) |
 | 2 | Can we turn a replay into turn-by-turn states? | **Yes** | poke-env's own battle tracker parses public logs. 400 games, 0 crashes |
 | 3 | Do replays and live games give the same state? | **Yes, if built the same way** | Re-parsing the live player's message stream gives 0 differences in 1.4 million field checks |
 | 4 | Can we see the opponent's choice often enough? | **Yes (bots; humans to confirm)** | 88% of turns give a label. The labels match true choices 99.98% of the time. One bias to handle |
 | 5 | Does the damage calculator cope with hidden info? | **Yes, with one fix** | It refuses to run until we fill in the opponent's stats, then is in range 89–94% of the time |
 | 6 | Freeze `interfaces.py` | **Ready to freeze, after 3 small changes** | See "Proposed interface changes" below |
-| 7 | Fix the split once | Blocked on 1 | Rule agreed: split by battle, newest games are test |
+| 7 | Fix the split once | **Unblocked** | Rule agreed: split by battle, newest games are test. Implemented in task B4 |
 | 8 | Write the evaluation plan before results | **Draft written** | [09-evaluation-plan.md](09-evaluation-plan.md), team to confirm |
 | 9 | Everyone's setup works | Each person | Run `python scripts/check_setup.py`, post the output |
 | 10 | Know what the instructor wants | Raghav / team | Deliverables, viva format, required algorithms |
@@ -233,6 +233,58 @@ It prints only counts and summaries (no usernames, no log text). It reports:
 
 Paste the whole output into the group. If the data turns out unusable, the fallbacks are in
 [05-plan.md](05-plan.md).
+
+### Result (run on 18 Nov 2026, task B1)
+
+Two fixes were needed first. The dataset names its files `[Gen 9] RANDOMBATTLE_part1.parquet`
+(not `gen9randombattle...`), and `datasets.load_dataset` reads `[Gen 9]` in a file name as a
+glob pattern, so the script now streams the matching files with pyarrow.
+
+**The data**
+
+- 308 Parquet files (72 GB) covering every format. Ours are `[Gen 9] RANDOMBATTLE_part1` to
+  `_part11` plus a separate Blitz file (a faster-timer variant we leave out). Together they hold
+  **2,149,370 rows**.
+- Licence: **not stated**. We use the data for this course only and never redistribute it
+  (see [data/README.md](../data/README.md)).
+- Columns: `id`, `format`, `players` (usernames), `log`, `uploadtime` (Unix seconds), `views`,
+  `formatid` (e.g. `gen9randombattle`) and `rating` (one number per game).
+
+**A sample of 2,000 games** (the first rows of part 1):
+
+| Question | Answer |
+|---|---|
+| Duplicate ids | 0 |
+| Finished (has `\|win\|` or `\|tie\|`) | 2,000 / 2,000 (100%) |
+| Turns per game | median 22; 10th percentile 8, 90th percentile 38 |
+| Games with a rating in their `\|player\|` lines (at least one player) | 1,720 / 2,000 (86%) |
+| Player rating deciles | 1045, 1122, 1198, 1308, 1394, 1506, 1627, 1768, 1956 (min 21, max 2486) |
+| Share of players rated 1100+ / 1300+ / 1500+ / 1700+ | 83% / 61% / 41% / 25% |
+| Dates | all 18 to 20 July 2025 (the first rows of a file are from a few days only) |
+| poke-env parses with no errors | 1,997 / 2,000 (99.8%); 3.4 ms per game, so 100,000 games take about 6 minutes |
+
+**Labels for the opponent model** (one player at one turn, 94,024 pairs): 87.6% usable, close to
+the 88% seen in bot games (check 4). Of the usable labels, 58.5% are attacks, 25.3%
+non-damaging moves and 16.3% switches. The rest are hidden choices: fainted before acting
+(8.2%), couldn't move (3.0%), battle over (1.0%) or locked into a move (0.2%).
+
+**One thing to watch: exact HP.** 1,966 of the 2,000 logs show some HP as exact numbers
+(e.g. `250/301`) instead of percentages. Most likely the replay was saved from one player's
+point of view, so their own Pokémon appear with exact HP (we have not confirmed this). A
+spectator would only see percentages, so the parser must convert every HP value to the public
+percentage, which the parser branch already does (`_public_hp` in `parser/replay.py`). Role C:
+keep a test for this.
+
+**What it means for each role**
+
+- B: the data is usable. Download the standard part files only, take the newest games when
+  sampling (the first rows of a file span only a few days), read both players' ratings from the
+  `|player|` lines (the `rating` column is one number per game), and choose the rating threshold
+  from the distribution above.
+- C: real logs parse almost as cleanly as bot games; HP must be made public (above).
+- E: label shares on human games are close to the bot games, so the switch-label bias in
+  check 4 applies here too.
+
 
 ## Proposed interface changes (check 6)
 
