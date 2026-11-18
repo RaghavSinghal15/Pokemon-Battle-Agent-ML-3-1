@@ -93,14 +93,34 @@ def count_parquet_rows(repo: str, paths: list[str]) -> int | None:
 
 
 def hf_rows(repo: str, files: list[str]):
-    from datasets import load_dataset
+    """Stream rows from the given Parquet files, a batch at a time.
 
-    if files:
-        ds = load_dataset(repo, data_files=files, split="train", streaming=True)
-    else:
+    Read with pyarrow rather than `datasets.load_dataset(data_files=...)`: that function treats
+    file names as glob patterns, so "[Gen 9]" is read as "one of the characters G, e, n, 9"
+    and nothing matches. Only the standard files are read ("_partN"); the Blitz file is a
+    different format and would only be skipped row by row.
+    """
+    if not files:
+        from datasets import load_dataset
+
         print("  no per-format files found: streaming the whole dataset and filtering")
-        ds = load_dataset(repo, split="train", streaming=True)
-    yield from ds
+        yield from load_dataset(repo, split="train", streaming=True)
+        return
+
+    import pyarrow.parquet as pq
+    from huggingface_hub import HfFileSystem
+
+    def part(name: str) -> int:
+        match = re.search(r"_part(\d+)\.parquet$", name)
+        return int(match.group(1)) if match else 0
+
+    standard = [f for f in files if re.search(r"RANDOMBATTLE(_part\d+)?\.parquet$", f)]
+    fs = HfFileSystem()
+    for name in sorted(standard, key=part):
+        print(f"  reading {name}")
+        with fs.open(f"datasets/{repo}/{name}", "rb") as handle:
+            for batch in pq.ParquetFile(handle).iter_batches(batch_size=1_000):
+                yield from batch.to_pylist()
 
 
 def local_rows(path: Path):
