@@ -21,6 +21,7 @@ ARTIFACTS_DIR = REPO_ROOT / "artifacts"
 
 # Small results that ARE committed: figures, result tables, the report.
 REPORTS_DIR = REPO_ROOT / "reports"
+MATCHUP_RESULTS_DIR = REPORTS_DIR / "results" / "matchups"
 
 # The Showdown format we play. "gen9randombattle" = Generation 9, singles, random teams.
 BATTLE_FORMAT = "gen9randombattle"
