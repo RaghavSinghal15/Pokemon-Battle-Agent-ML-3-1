@@ -352,3 +352,11 @@ def test_build_runs_end_to_end_on_fake_battles(tmp_path, monkeypatch, capsys):
     splits = load_splits(paths["SPLITS_PATH"])
     assert sum(len(ids) for ids in splits.values()) == counts[-1]
     assert "Ash" not in paths["SUMMARY_PATH"].read_text()  # no player names in the summary
+
+
+def test_report_figures_are_drawn_from_the_summary(tmp_path):
+    from pokeagent.data.report import SUMMARY_PATH, make_figures
+
+    paths = make_figures(SUMMARY_PATH, tmp_path)
+    assert [p.name for p in paths] == ["data_ratings.png", "data_filtering.png", "data_turns.png"]
+    assert all(p.stat().st_size > 0 for p in paths)

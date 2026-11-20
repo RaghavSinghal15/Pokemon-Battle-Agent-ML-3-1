@@ -90,8 +90,8 @@ test set will judge them.
 **Decision:** drop duplicate ids, games without a winner (ties, unfinished), games shorter than
 2 turns, and games where either player is unrated or below a rating threshold. The threshold
 is chosen from the data: the rating that keeps the top 35% of usable games, ranked by the
-lower-rated player (`RATING_KEEP_FRACTION` in config). The resulting number is in
-`reports/data_report.md`.
+lower-rated player (`RATING_KEEP_FRACTION` in config). On the 50,000 newest battles this is
+**1,893**, keeping 16,082 battles (see `reports/data_report.md`).
 **Alternatives:** a fixed round number such as 1500 (a guess that may keep too few or too many
 games); filtering on the average of the two ratings (lets a strong player carry a weak one);
 keeping everything (the model would learn beginners' habits, but our agent should predict
