@@ -72,6 +72,20 @@ the state for the same turn.
 snapshot before reading the choice also prevents the move, revealed items and damage
 from entering their own training row. Drop turns with hidden choices and keep the
 observed disguise when the log shows a voluntary switch under Illusion.
+## 2026-11-18: Which battles we keep (B, Rishi)
+**Decision:** drop duplicate ids, games without a winner (ties, unfinished), games shorter than
+2 turns, and games where either player is unrated or below a rating threshold. The threshold
+is chosen from the data: the rating that keeps the top 35% of usable games, ranked by the
+lower-rated player (`RATING_KEEP_FRACTION` in config). The resulting number is in
+`reports/data_report.md`.
+**Alternatives:** a fixed round number such as 1500 (a guess that may keep too few or too many
+games); filtering on the average of the two ratings (lets a strong player carry a weak one);
+keeping everything (the model would learn beginners' habits, but our agent should predict
+competent play).
+**Why:** both players must be reasonably skilled for their choices to be worth imitating, and
+a fraction tied to the data stays sensible whatever the rating scale looks like. The cost is
+that the model sees only good players, which we report as a limitation.
+
 ## 2026-11-18: How the replay data is downloaded and stored (B, Rishi)
 **Decision:** read only the dataset's `[Gen 9] RANDOMBATTLE_part*.parquet` files at a pinned
 dataset revision, keep rows whose `formatid` is exactly `gen9randombattle`, and write one local
