@@ -281,8 +281,9 @@ glob pattern, so the script now streams the matching files with pyarrow.
 **The data**
 
 - 308 Parquet files (72 GB) covering every format. Ours are `[Gen 9] RANDOMBATTLE_part1` to
-  `_part11` plus a separate Blitz file (a faster-timer variant we leave out). Together they hold
-  **2,149,370 rows**.
+  `_part11` plus a separate Blitz file (a faster-timer variant we leave out). Their file
+  footers count **2,149,370 rows** (a candidate-file row count, which can include Blitz rows).
+  B2 counts only rows whose format id is exactly `gen9randombattle`: 2,012,698 battles.
 - Licence: **not stated**. We use the data for this course only and never redistribute it
   (see [data/README.md](../data/README.md)).
 - Columns: `id`, `format`, `players` (usernames), `log`, `uploadtime` (Unix seconds), `views`,
@@ -320,8 +321,9 @@ keep a test for this.
   `|player|` lines (the `rating` column is one number per game), and choose the rating threshold
   from the distribution above.
 - C: real logs parse almost as cleanly as bot games; HP must be made public (above).
-- E: label shares on human games are close to the bot games, so the switch-label bias in
-  check 4 applies here too.
+- E: label shares on human games are close to the bot games. This shows that labels are
+  available about as often; it does not measure the switch-label bias in check 4, which needs
+  the hidden choices that only bot games (ground truth) reveal. Assume the bias applies here too.
 
 
 ## Proposed interface changes (check 6)
