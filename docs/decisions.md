@@ -72,6 +72,20 @@ the state for the same turn.
 snapshot before reading the choice also prevents the move, revealed items and damage
 from entering their own training row. Drop turns with hidden choices and keep the
 observed disguise when the log shows a voluntary switch under Illusion.
+## 2026-11-18: Time-ordered train / validation / test split (B, Rishi)
+**Decision:** sort battles by upload time; the oldest 70% are training, the next 15%
+validation, the newest 15% test. Whole battles only, never single turns. Ties in time are
+broken by battle id so the split is the same on every computer. The file is written once and
+`save_splits` refuses to overwrite it.
+**Alternatives:** random split (lets the model learn from games played after some test games
+and hides changes in play over time); random validation drawn from the older 85% (the earlier
+plan in `splits.py`: tuning would then be judged on the same period as training, so it would
+look better than it will on the newer test set); splitting by turn (turns of one game are
+nearly identical, so the test set would contain near-copies of training rows).
+**Why:** the agent plays future games, so the test set must be "the future". Putting
+validation between train and test in time means tuning and calibration are judged the way the
+test set will judge them.
+
 ## 2026-11-18: Which battles we keep (B, Rishi)
 **Decision:** drop duplicate ids, games without a winner (ties, unfinished), games shorter than
 2 turns, and games where either player is unrated or below a rating threshold. The threshold
