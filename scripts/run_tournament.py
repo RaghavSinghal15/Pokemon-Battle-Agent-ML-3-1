@@ -1,4 +1,4 @@
-"""Run a baseline matchup and save counts, uncertainty and provenance as JSON."""
+"""Run a local matchup and save counts, provenance and optional public battle logs."""
 
 import argparse
 import asyncio
@@ -13,7 +13,13 @@ from pokeagent.eval.tournament import run_matchup, source_revision
 async def main(args: argparse.Namespace) -> dict:
     """Create and close the two clients around one recorded matchup."""
     server = source_revision(args.server_dir) if args.server_dir else None
-    player = BASELINES[args.p1](battle_format=BATTLE_FORMAT, max_concurrent_battles=args.concurrent)
+    if args.p1 == "agent":
+        from pokeagent.agent.player import ExplainableAgent
+
+        player_type = ExplainableAgent
+    else:
+        player_type = BASELINES[args.p1]
+    player = player_type(battle_format=BATTLE_FORMAT, max_concurrent_battles=args.concurrent)
     opponent = BASELINES[args.p2](
         battle_format=BATTLE_FORMAT, max_concurrent_battles=args.concurrent
     )
@@ -26,6 +32,8 @@ async def main(args: argparse.Namespace) -> dict:
             output_path=args.out,
             timeout=args.timeout,
             server_revision=server,
+            save_replays=args.save_replays,
+            replay_path=args.replay_out,
         )
     finally:
         await player.ps_client.stop_listening()
@@ -34,11 +42,22 @@ async def main(args: argparse.Namespace) -> dict:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--p1", choices=BASELINES, default="heuristics")
+    parser.add_argument(
+        "--p1",
+        choices=(*BASELINES, "agent"),
+        default="heuristics",
+        help="use 'agent' for the flat-forecast best-response agent",
+    )
     parser.add_argument("--p2", choices=BASELINES, default="random")
     parser.add_argument("--games", type=int, default=100)
     parser.add_argument("--seed", type=int, default=SEED)
     parser.add_argument("--out", type=Path)
+    parser.add_argument(
+        "--save-replays", action="store_true", help="save public battle logs locally"
+    )
+    parser.add_argument(
+        "--replay-out", type=Path, help="explicit path for the public JSONL archive"
+    )
     parser.add_argument(
         "--server-dir", type=Path, help="local Showdown checkout for source provenance"
     )

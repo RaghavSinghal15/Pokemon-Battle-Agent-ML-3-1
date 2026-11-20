@@ -13,6 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = REPO_ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"  # untouched downloads
 INTERIM_DIR = DATA_DIR / "interim"  # filtered battles, one row per battle
+AGENT_GAMES_DIR = INTERIM_DIR / "agent_games"  # local public tournament replays
 PROCESSED_DIR = DATA_DIR / "processed"  # decision points and feature tables
 SPLITS_PATH = DATA_DIR / "splits.json"  # which battle ids are train / validation / test
 DECISION_POINTS_PATH = PROCESSED_DIR / "decision_points.parquet"

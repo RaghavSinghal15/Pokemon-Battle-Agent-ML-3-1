@@ -15,7 +15,8 @@ from pathlib import Path
 import numpy as np
 from poke_env.player import Player
 
-from pokeagent.config import MATCHUP_RESULTS_DIR, REPO_ROOT, SEED
+from pokeagent.config import AGENT_GAMES_DIR, MATCHUP_RESULTS_DIR, REPO_ROOT, SEED
+from pokeagent.eval.replays import play_with_public_logs, write_public_logs
 from pokeagent.eval.stats import win_rate_ci
 
 
@@ -43,6 +44,8 @@ async def run_matchup(
     output_path: Path | None = None,
     timeout: float | None = None,
     server_revision: dict | None = None,
+    save_replays: bool = False,
+    replay_path: Path | None = None,
 ) -> dict:
     """Play new games, save one JSON record and return counts plus a Wilson win interval.
 
@@ -50,6 +53,8 @@ async def run_matchup(
     concurrent matchup. Earlier completed battles are excluded. Ties count as non-wins,
     not half-wins. This seeds Python/NumPy choices, not the server's random team generator.
     The caller owns the clients and is responsible for closing them after use.
+    Enable save_replays to write a separate public-spectator JSONL archive in AGENT_GAMES_DIR,
+    or pass replay_path to select the file explicitly. Capture time counts toward timeout.
     """
     if isinstance(n_games, bool) or not isinstance(n_games, Integral) or n_games <= 0:
         raise ValueError("n_games must be a positive integer")
@@ -65,15 +70,31 @@ async def run_matchup(
     before = [set(bot.battles) for bot in (player, opponent)]
     source = source_revision()
     started = datetime.now(timezone.utc)
+    run_stamp = started.strftime("%Y%m%dT%H%M%S%fZ")
     if output_path is None:
-        output_path = MATCHUP_RESULTS_DIR / f"matchup-{started.strftime('%Y%m%dT%H%M%S%fZ')}.json"
+        output_path = MATCHUP_RESULTS_DIR / f"matchup-{run_stamp}.json"
     output_path = Path(output_path)
     if output_path.exists():
         raise FileExistsError(f"Result already exists: {output_path}")
+    if save_replays and replay_path is None:
+        replay_path = AGENT_GAMES_DIR / f"matchup-{run_stamp}.jsonl"
+    if replay_path is not None:
+        replay_path = Path(replay_path)
+        if replay_path.resolve() == output_path.resolve():
+            raise ValueError("Replay and result outputs must use separate paths")
+        if replay_path.exists():
+            raise FileExistsError(f"Replay archive already exists: {replay_path}")
+        if player.ps_client.websocket_url != opponent.ps_client.websocket_url:
+            raise ValueError("Replay capture requires both players on the same server")
     random.seed(int(seed))
     np.random.seed(int(seed))
     start = time.perf_counter()
-    await asyncio.wait_for(player.battle_against(opponent, n_battles=int(n_games)), timeout)
+    if replay_path is None:
+        await asyncio.wait_for(player.battle_against(opponent, n_battles=int(n_games)), timeout)
+    else:
+        logs = await asyncio.wait_for(
+            play_with_public_logs(player, opponent, int(n_games), before[0]), timeout
+        )
     elapsed = time.perf_counter() - start
     fresh = [
         {k: b for k, b in bot.battles.items() if k not in old}
@@ -116,8 +137,12 @@ async def run_matchup(
         "python_version": platform.python_version(),
         "poke_env_version": version("poke-env"),
     }
+    run_outputs = {"result_path": str(output_path)}
+    if replay_path is not None:
+        write_public_logs(replay_path, fresh[0], logs)
+        run_outputs["replay_path"] = str(replay_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("x", encoding="utf-8") as stream:
         json.dump(result, stream, indent=2, allow_nan=False)
         stream.write("\n")
-    return {**result, "result_path": str(output_path)}
+    return {**result, **run_outputs}
