@@ -5,6 +5,8 @@ carry Flamethrower). We can send in a half-HP Water-type that resists Fire and h
 super effectively, or a full-HP Grass-type that Fire hits super effectively.
 """
 
+import json
+
 import pytest
 from poke_env.battle import Pokemon, SideCondition
 from test_damage import make_battle
@@ -17,6 +19,18 @@ from pokeagent.decision.payoff import PayoffUnavailable, replacement_tables
 from pokeagent.interfaces import SetBelief
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
+
+
+@pytest.fixture(autouse=True)
+def public_sets(tmp_path, monkeypatch):
+    """A tiny stand-in sets file, so these tests need no Showdown checkout (as in CI).
+
+    The agent only checks that the file exists; the tests pass their own beliefs.
+    """
+    path = tmp_path / "replacement-sets.json"
+    path.write_text(json.dumps({}), encoding="utf-8")
+    monkeypatch.setattr(player, "RANDOM_BATTLE_SETS_PATH", path)
+
 
 ARCANINE = {"arcanine": SetBelief("arcanine", move_probs={"flamethrower": 1.0})}
 
