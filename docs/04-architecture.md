@@ -83,7 +83,12 @@ the version 2 fix.
 ### 5. Forced switches are excluded
 
 After a faint, the replacement is not a simultaneous choice, so it does not fit the
-predict-then-respond structure. Version 1 picks replacements with a simple rule.
+predict-then-respond structure. The first version sent in the healthiest Pokémon. Since F7
+(#61), the agent builds next turn's payoff table as if each reserve were in battle (its own
+moves against the opponent's likely moves, plus hazard damage on entry) and sends in the one
+whose table scores best under its strategy. Type matchups, abilities, items and Speed come in
+through the same damage and order calculations as every other table. HP is used only when no
+table can be built, for example when both active Pokémon fainted at once.
 
 ### 6. A walking skeleton
 

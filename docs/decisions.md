@@ -27,6 +27,22 @@ battle for an older tie, so the sample depended on how Hugging Face happened to 
 rows. Battle-id order is deterministic and independent of storage. Exceeding the limit would
 make `--max-battles` mean something different from what it says. Checking the split last let a
 refused run replace the files the frozen split refers to.
+## 2026-11-20: Forced replacements chosen by next-turn matchup (F7 #61, Raghav with Claude)
+**Decision:** after a faint or a forced switch, build next turn's payoff table as if each
+reserve were in battle (its own moves against the opponent's likely moves, with hazard damage
+on entry) and send in the reserve whose table scores best: the best expected row for best
+response, the game value for minimax. The forecast is flat 1/3 in both modes. HP decides only
+ties, and the healthiest reserve is still the fallback when no table can be built (both active
+Pokemon fainted at once, so the opponent's next Pokemon is unknown).
+**Alternatives:** keep "most HP"; a hand-written type-chart score; query the opponent model
+on hypothetical states.
+**Why:** about 19% of decisions are forced replacements, and "most HP" sends in Pokemon that
+the opponent hits super effectively. Reusing the payoff table brings in type matchups,
+abilities, items, Speed and Stealth Rock's type scaling with no new scoring rules to defend.
+The opponent model was trained on states with our real active Pokemon, so asking it about
+hypothetical replacements would be outside its training data. In 200 development games per
+strategy against `SimpleHeuristicsPlayer`, best response went from 93 to 122 wins and
+minimax from 60 to 72.
 
 ## 2026-11-13: Minimax probabilities and repeatable sampling (F1, Devam)
 **Decision:** maximise the worst-case expected payoff with `scipy.optimize.linprog`, then
