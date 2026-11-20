@@ -66,6 +66,30 @@ def test_existing_result_is_not_overwritten(tmp_path):
     assert player.calls == 0 and path.read_text() == "keep"
 
 
+def test_existing_replay_is_rejected_before_playing(tmp_path):
+    replay = tmp_path / "exists.jsonl"
+    replay.write_text("keep")
+    player = FakePlayer([True])
+    with pytest.raises(FileExistsError, match="Replay archive already exists"):
+        run(player, FakePlayer(), tmp_path / "result.json", 1, replay_path=replay)
+    assert player.calls == 0 and replay.read_text() == "keep"
+
+
+def test_capture_failure_does_not_save_a_summary_or_replay(tmp_path, monkeypatch):
+    player, opponent = FakePlayer([True]), FakePlayer()
+    player.ps_client = opponent.ps_client = SimpleNamespace(websocket_url="ws://local-test")
+
+    async def incomplete(player, opponent, games, previous_rooms):
+        await player.battle_against(opponent, n_battles=games)
+        return {}
+
+    monkeypatch.setattr(tournament, "play_with_public_logs", incomplete)
+    report, replay = tmp_path / "result.json", tmp_path / "games.jsonl"
+    with pytest.raises(RuntimeError, match="Spectator logs do not cover"):
+        run(player, opponent, report, 1, replay_path=replay)
+    assert not report.exists() and not replay.exists()
+
+
 @pytest.mark.parametrize("games", [0, -1, True, 1.5])
 def test_bad_game_count(tmp_path, games):
     with pytest.raises(ValueError):
