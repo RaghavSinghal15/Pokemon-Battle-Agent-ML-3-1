@@ -88,17 +88,59 @@ def build_payoff_table(
     """
     if not isinstance(battle, Battle) or battle.gen != 9 or battle.force_switch:
         raise PayoffUnavailable("A table requires a normal Gen 9 singles turn")
-    me, opp = battle.active_pokemon, battle.opponent_active_pokemon
-    if me is None or opp is None or me.fainted or opp.fainted:
+    me = battle.active_pokemon
+    if me is None or me.fainted:
         raise PayoffUnavailable("Both active Pokemon must be alive and revealed")
     me_key = next(k for k, mon in battle.team.items() if mon is me)
-    opp_key = next(k for k, mon in battle.opponent_team.items() if mon is opp)
     rows = [(Action("move", m.id), me_key, m) for m in battle.available_moves]
     for mon in battle.available_switches:
         if mon.max_hp <= 0 or mon.current_hp_fraction <= 0:
             continue
         key = next(k for k, candidate in battle.team.items() if candidate is mon)
         rows.append((Action("switch", mon.species), key, None))
+    return _table(battle, beliefs, class_probs, me_key, rows, entering=False)
+
+
+def replacement_tables(
+    battle: Battle, beliefs: BeliefState, class_probs: dict[str, float] | None
+) -> dict[str, PayoffTable]:
+    """For a forced replacement, next turn's table as if each legal reserve came in.
+
+    Rows are the reserve's own known moves (our team's moves are not hidden from us), and
+    every row pays the reserve's hazard damage on entry. Columns, beliefs and scoring are
+    exactly those of build_payoff_table, so type matchups, abilities, items and Speed enter
+    through the same damage and order calculations. Our switch rows are left out: the
+    question is how good each Pokemon is to have in battle. Keys are species. Raises
+    PayoffUnavailable when no candidate can be scored (for example, when the opponent's
+    active Pokemon also fainted and its replacement is not yet known).
+    """
+    if not isinstance(battle, Battle) or battle.gen != 9:
+        raise PayoffUnavailable("Replacement scoring requires a Gen 9 singles battle")
+    tables, reasons = {}, []
+    for mon in battle.available_switches:
+        if mon.max_hp <= 0 or mon.current_hp_fraction <= 0:
+            continue
+        key = next(k for k, candidate in battle.team.items() if candidate is mon)
+        moves = [Move(move_id, gen=battle.gen) for move_id in mon.moves]
+        rows = [(Action("move", move.id), key, move) for move in moves]
+        try:
+            tables[mon.species] = _table(battle, beliefs, class_probs, key, rows, entering=True)
+        except PayoffUnavailable as error:
+            reasons.append(f"{mon.species}: {error}")
+    if not tables:
+        raise PayoffUnavailable("No replacement could be scored; " + "; ".join(reasons))
+    return tables
+
+
+def _table(battle, beliefs, class_probs, me_key, rows, *, entering):
+    """Score rows for our Pokemon at me_key against the opponent's active Pokemon.
+
+    entering=True charges hazard damage on every row, because that Pokemon is arriving.
+    """
+    opp = battle.opponent_active_pokemon
+    if opp is None or opp.fainted:
+        raise PayoffUnavailable("Both active Pokemon must be alive and revealed")
+    opp_key = next(k for k, mon in battle.opponent_team.items() if mon is opp)
     if not rows or len({(a.kind, a.name) for a, _, _ in rows}) != len(rows):
         raise PayoffUnavailable("Legal actions are empty or have duplicate labels")
     moves = _opponent_moves(battle, beliefs)
@@ -130,7 +172,9 @@ def build_payoff_table(
         scenario = scenario_copy(battle, our_key, their_key)
         our_mon, their_mon = scenario.active_pokemon, scenario.opponent_active_pokemon
         losses = (
-            entry_damage(our_mon, scenario, scenario.side_conditions) if our_key != me_key else 0,
+            entry_damage(our_mon, scenario, scenario.side_conditions)
+            if entering or our_key != me_key
+            else 0,
             entry_damage(their_mon, scenario, scenario.opponent_side_conditions)
             if their_key is not None and their_key != opp_key
             else 0,
