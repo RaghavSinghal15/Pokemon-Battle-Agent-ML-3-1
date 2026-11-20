@@ -6,7 +6,7 @@ from math import prod
 from poke_env.data import GenData, to_id_str
 
 from pokeagent.config import RANDOM_BATTLE_GENERATION
-from pokeagent.interfaces import BeliefState, FeatureRow, PokemonView, PublicState, SideView
+from pokeagent.interfaces import Action, BeliefState, FeatureRow, PokemonView, PublicState, SideView
 
 FEATURE_NAMES = [
     "turn",
@@ -118,6 +118,21 @@ def _move_signals(move_id: str) -> tuple[bool, bool]:
     return setup, recovery
 
 
+def _action_class(dex: GenData, action: Action | None) -> str | None:
+    if action is None:
+        return None
+    if action.kind == "switch":
+        return "switch"
+    if action.kind != "move":
+        return None
+    category = dex.moves.get(to_id_str(action.name), {}).get("category")
+    if category in {"Physical", "Special"}:
+        return "attack"
+    if category == "Status":
+        return "non_damaging"
+    return None
+
+
 def build_features(state: PublicState, beliefs: BeliefState) -> FeatureRow:
     """Return the ordered numeric columns documented in docs/features.md."""
     dex = GenData.from_gen(RANDOM_BATTLE_GENERATION)
@@ -139,10 +154,7 @@ def build_features(state: PublicState, beliefs: BeliefState) -> FeatureRow:
             if is_recovery:
                 recovery = max(recovery, probability)
 
-    last = state.opp_last_action
-    last_category = None
-    if last and last.kind == "move":
-        last_category = dex.moves.get(to_id_str(last.name), {}).get("category")
+    last_class = _action_class(dex, state.opp_last_action)
 
     side_columns = tuple(
         value
@@ -163,8 +175,8 @@ def build_features(state: PublicState, beliefs: BeliefState) -> FeatureRow:
         ),
         setup,
         recovery,
-        float(last_category in {"Physical", "Special"}),
-        float(last_category == "Status"),
-        float(bool(last and last.kind == "switch")),
+        float(last_class == "attack"),
+        float(last_class == "non_damaging"),
+        float(last_class == "switch"),
     )
     return {name: float(value) for name, value in zip(FEATURE_NAMES, values, strict=True)}

@@ -15,6 +15,8 @@ RAW_DIR = DATA_DIR / "raw"  # untouched downloads
 INTERIM_DIR = DATA_DIR / "interim"  # filtered battles, one row per battle
 PROCESSED_DIR = DATA_DIR / "processed"  # decision points and feature tables
 SPLITS_PATH = DATA_DIR / "splits.json"  # which battle ids are train / validation / test
+DECISION_POINTS_PATH = PROCESSED_DIR / "decision_points.parquet"
+FEATURES_PATH = PROCESSED_DIR / "features.parquet"
 
 # Trained models and other large outputs (git-ignored).
 ARTIFACTS_DIR = REPO_ROOT / "artifacts"
