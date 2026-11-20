@@ -196,6 +196,16 @@ quantity; no games provide no estimated win probability. Bounds describe samplin
 uncertainty, not model uncertainty or a guaranteed range. Tests check known values and edges.
 Formula reference: [NIST Engineering Statistics Handbook](https://www.itl.nist.gov/div898/handbook/prc/section2/prc241.htm).
 
+## 2026-11-17: Play with a flat forecast before a learned model (F5, Devam)
+**Decision:** best response to a flat three-class forecast with public move-pool priors;
+explicit greedy-damage, forced-replacement and server-default fallback paths with counters.
+Keep both strategies available, using a per-agent seeded generator for minimax sampling.
+**Alternatives:** random play while E5 is unfinished; claim a flat prior is a trained model;
+swallow failed tables without reporting coverage.
+**Why:** this tests the decision pipeline and F5's weak-baseline milestone independently
+of model training. A temporary agent-side cosmetic-form mapping consumes D1 without changing
+the peer-owned belief code. See [f5-agent-v0.md](f5-agent-v0.md) for the policy and measurement.
+
 ## 2026-11-13: Initial architecture (all)
 **Decision:** public-information states for both sides; split by battle with the newest
 battles as test; three action classes for the opponent model; one-turn payoffs; forced

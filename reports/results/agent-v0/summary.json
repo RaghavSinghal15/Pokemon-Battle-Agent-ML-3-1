@@ -1,0 +1,42 @@
+{
+  "mode": "flat",
+  "strategy": "best_response",
+  "source": {
+    "commit": "55b6bb37dcebe18eb2253a371f6a2ffda5b0ccf1",
+    "tracked_changes": false
+  },
+  "matchups": [
+    {
+      "opponent": "random",
+      "record": "vs-random.json",
+      "wins": 200,
+      "games": 200,
+      "ci_lower": 0.9811539940816791,
+      "ci_upper": 1.0,
+      "decision_counts": {
+        "best_response": 4840,
+        "baseline": 387
+      },
+      "fallback_reasons": {
+        "forced replacement, outside the simultaneous table": 387
+      }
+    },
+    {
+      "opponent": "max_power",
+      "record": "vs-max_power.json",
+      "wins": 177,
+      "games": 200,
+      "ci_lower": 0.8333517476611362,
+      "ci_upper": 0.9221368277817569,
+      "decision_counts": {
+        "best_response": 3890,
+        "baseline": 719
+      },
+      "fallback_reasons": {
+        "forced replacement, outside the simultaneous table": 716,
+        "PayoffUnavailable: Unsupported action-order item": 3
+      }
+    }
+  ],
+  "beats_both_with_interval_above_half": true
+}
