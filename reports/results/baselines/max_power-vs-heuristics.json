@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "player_class": "MaxBasePowerPlayer",
+  "opponent_class": "SimpleHeuristicsPlayer",
+  "format": "gen9randombattle",
+  "games": 500,
+  "wins": 70,
+  "losses": 430,
+  "ties": 0,
+  "win_rate": 0.14,
+  "ci_lower": 0.11232220101564047,
+  "ci_upper": 0.17316752432660995,
+  "interval_method": "wilson",
+  "z": 1.96,
+  "seed": 468,
+  "seed_scope": "Python/NumPy choices only; server teams are not seeded",
+  "source": {
+    "commit": "c04028799cc722de07bbf9f312b41765d3e7d29a",
+    "tracked_changes": false
+  },
+  "server_source": {
+    "commit": "5c28e341ef9f9730a35874390cc3bc2aead7a16e",
+    "tracked_changes": false
+  },
+  "started_utc": "2026-11-13T23:53:39.197283+00:00",
+  "elapsed_seconds": 17.192333799990593,
+  "python_version": "3.12.5",
+  "poke_env_version": "0.16.1"
+}
