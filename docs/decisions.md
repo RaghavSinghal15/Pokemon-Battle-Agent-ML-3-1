@@ -15,6 +15,18 @@ Template:
 
 ---
 
+## 2026-11-20: Newest-sample ties filled by battle id; rebuild refuses first (B, #64, Raghav with Claude)
+**Decision:** when `--max-battles` cuts through battles uploaded in the same second, every
+battle strictly newer than that second is kept, and the remaining places go to the tied
+battles in battle-id order. The build checks for an existing `splits.json` before it downloads
+or filters anything.
+**Alternatives:** keep ties in file order (what B2 did); keep all ties and exceed the limit;
+check the split only when saving it (what B4 did).
+**Why:** Devam's reviews of #56 and #58 reproduced both bugs. File order could drop a newer
+battle for an older tie, so the sample depended on how Hugging Face happened to store the
+rows. Battle-id order is deterministic and independent of storage. Exceeding the limit would
+make `--max-battles` mean something different from what it says. Checking the split last let a
+refused run replace the files the frozen split refers to.
 ## 2026-11-20: Forced replacements chosen by next-turn matchup (F7 #61, Raghav with Claude)
 **Decision:** after a faint or a forced switch, build next turn's payoff table as if each
 reserve were in battle (its own moves against the opponent's likely moves, with hazard damage

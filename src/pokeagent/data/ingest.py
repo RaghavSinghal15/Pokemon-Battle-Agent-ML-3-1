@@ -230,6 +230,20 @@ def download_replays(
     tmp_path = out_path.with_suffix(".parquet.tmp")  # renamed only when complete
     writer = None
     written = 0
+    # Several battles can share the cut-off second, so there may be more of them than places
+    # left. Battles strictly newer than the cut-off are always kept (they can sit in any file,
+    # in any order). Ties at the cut-off are held back and fill the remaining places at the
+    # end, in battle-id order, so the same dataset always gives the same sample (#64).
+    ties = []
+
+    def write(battles):
+        nonlocal writer, written
+        table = pa.Table.from_pandas(battles, preserve_index=False)
+        if writer is None:
+            writer = pq.ParquetWriter(tmp_path, table.schema)
+        writer.write_table(table)
+        written += len(battles)
+
     print("Pass 2: downloading the battles ...")
     try:
         for name in files:
@@ -244,20 +258,17 @@ def download_replays(
                     ):
                         battles = battles_from_rows(batch.to_pylist())
                         if cutoff is not None:
-                            battles = battles[battles["upload_time"] >= cutoff]
-                        if max_battles is not None:
-                            # Several battles can share the cut-off second; stop at the limit.
-                            battles = battles.head(max_battles - written)
-                        if battles.empty:
-                            continue
-                        table = pa.Table.from_pandas(battles, preserve_index=False)
-                        if writer is None:
-                            writer = pq.ParquetWriter(tmp_path, table.schema)
-                        writer.write_table(table)
-                        written += len(battles)
+                            ties.append(battles[battles["upload_time"] == cutoff])
+                            battles = battles[battles["upload_time"] > cutoff]
+                        if not battles.empty:
+                            write(battles)
             print(f"  {name}: {written:,} battles so far", flush=True)
-            if max_battles is not None and written >= max_battles:
-                break
+        if cutoff is not None:
+            tied = pd.concat(ties, ignore_index=True).sort_values("battle_id")
+            tied = tied.head(max_battles - written)
+            if not tied.empty:
+                write(tied)
+            print(f"  {len(tied):,} of them uploaded in the cut-off second", flush=True)
     finally:
         if writer is not None:
             writer.close()

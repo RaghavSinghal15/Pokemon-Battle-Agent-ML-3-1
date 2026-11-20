@@ -112,6 +112,15 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # Check before downloading or filtering: the files an existing split refers to must not
+    # be replaced by a run that is then refused, or the split can no longer be rebuilt (#64).
+    if SPLITS_PATH.exists() and not args.overwrite_splits:
+        raise FileExistsError(
+            f"{SPLITS_PATH} already exists, so nothing was downloaded or filtered. The split is "
+            "made once and shared; pass --overwrite-splits only if the team agreed to remake "
+            "it (and retrain every model)."
+        )
+
     if not args.skip_download:
         download_replays(RAW_BATTLES_PATH, max_battles=args.max_battles)
     raw = load_battles(RAW_BATTLES_PATH, columns=SMALL_COLUMNS)

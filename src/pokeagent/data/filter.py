@@ -63,8 +63,10 @@ def choose_min_rating(
     lower = lower_rating(usable_battles(df, min_turns)).dropna()
     if lower.empty:
         raise ValueError("No battle has both players rated, so no threshold can be chosen")
-    # The (1 - keep_fraction) quantile: e.g. keeping the top 35% means cutting at the 65th
-    # percentile. Rounded down so that ties at the cut-off are kept.
+    # The (1 - keep_fraction) quantile: e.g. aiming to keep the top 35% means cutting at the
+    # 65th percentile. Rounded down so that ties at the cut-off are kept. So keep_fraction is a
+    # target: the kept share can be a little above it (ratings 1000-1003 with a 35% target cut
+    # at 1001 and keep three of four games).
     return int(lower.quantile(1 - keep_fraction))
 
 
