@@ -4,8 +4,9 @@ Turns the raw Hugging Face replay dataset into a clean, filtered table of battle
 train / validation / test split that everyone uses.
 
 Produces:
-    data/interim/battles.parquet   one row per battle: battle_id, upload_time, rating_p1,
-                                   rating_p2, winner ("p1"/"p2"), log (the full battle log text)
+    data/raw/gen9randombattle.parquet   every downloaded battle, one row each (see ingest.py
+                                        for the columns)
+    data/interim/battles.parquet   the filtered battles, same columns
     data/splits.json               {"train": [...], "val": [...], "test": [...]} battle ids
     reports/data_report.md         counts, rating distribution, game lengths, what was dropped
 """
