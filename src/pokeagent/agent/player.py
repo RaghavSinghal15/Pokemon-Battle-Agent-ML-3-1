@@ -2,13 +2,15 @@
 
 import warnings
 from collections import Counter
-from typing import Literal
+from typing import TYPE_CHECKING, Literal, TextIO
 
 import numpy as np
 from poke_env.battle import AbstractBattle, Battle
 from poke_env.data import GenData, to_id_str
 from poke_env.player import BattleOrder, Player
 
+from pokeagent.agent._inputs import public_beliefs
+from pokeagent.agent.explain import format_turn
 from pokeagent.beliefs.tracker import prior_belief
 from pokeagent.config import RANDOM_BATTLE_SETS_PATH, SEED
 from pokeagent.decision.damage import estimate_move_damage
@@ -18,7 +20,12 @@ from pokeagent.decision.payoff import (
     build_payoff_table,
 )
 from pokeagent.decision.strategies import best_response, minimax_lp
+from pokeagent.features.build import build_features
 from pokeagent.interfaces import ACTION_CLASSES, Action, BeliefState, Decision
+from pokeagent.parser.live import state_from_battle
+
+if TYPE_CHECKING:
+    from pokeagent.models.opponent import OpponentModel
 
 
 def flat_beliefs(battle: Battle) -> BeliefState:
@@ -37,10 +44,10 @@ def flat_beliefs(battle: Battle) -> BeliefState:
 
 
 class ExplainableAgent(Player):
-    """F5: flat action-class forecast, public set priors and auditable fallbacks.
+    """Flat development mode or an explicitly supplied learned opponent model.
 
-    Full model inputs and public-state explanations are the separate F6 step.
-    Our legal moves/team can inform decisions; no peer's battle is ever read.
+    Model features come only from the shared public parser and belief tracker. Our legal
+    moves/team can inform the payoff table; no peer's battle is ever read.
     """
 
     def __init__(
@@ -49,14 +56,24 @@ class ExplainableAgent(Player):
         strategy: Literal["best_response", "lp"] = "best_response",
         explain: bool = False,
         seed: int = SEED,
+        mode: Literal["flat", "model"] = "flat",
+        opponent_model: "OpponentModel | None" = None,
+        explanation_stream: TextIO | None = None,
         **kwargs,
     ):
         if strategy not in ("best_response", "lp"):
             raise ValueError("strategy must be best_response or lp")
+        if mode not in ("flat", "model") or (mode == "model") != (opponent_model is not None):
+            raise ValueError(
+                "mode=model requires an opponent_model; flat mode must not receive one"
+            )
         if not RANDOM_BATTLE_SETS_PATH.is_file():
             raise FileNotFoundError(f"Public Random Battle sets missing: {RANDOM_BATTLE_SETS_PATH}")
         self.rng = np.random.default_rng(seed)
         self.strategy, self.explain = strategy, explain
+        self.mode, self.opponent_model = mode, opponent_model
+        self.explanation_stream = explanation_stream
+        self.last_explanation = ""
         self.decision_counts = Counter()
         self.fallback_reasons = Counter()
         self.last_decision: Decision | None = None
@@ -90,20 +107,36 @@ class ExplainableAgent(Player):
             if not switches:
                 self.last_decision = None
                 self.decision_counts["default"] += 1
-                if self.explain:
-                    print(f"Turn {battle.turn}: server default; {reason}; no listed legal options")
+                self._emit(
+                    f"Battle {battle.battle_tag} | Turn {battle.turn}: "
+                    f"server default; {reason}; no listed legal options"
+                )
                 return self.choose_default_move()
             replacement = max(switches, key=lambda p: p.current_hp_fraction)
             action, detail = Action("switch", replacement.species), "healthiest legal replacement"
         decision = Decision(action, "baseline", explanation=f"Fallback: {reason}; {detail}.")
         return self._record(battle, decision)
 
-    def _record(self, battle: Battle, decision: Decision) -> BattleOrder:
+    def _emit(self, text: str) -> None:
+        self.last_explanation = text
+        if self.explain:
+            print(text)
+        if self.explanation_stream is not None:
+            self.explanation_stream.write(text + "\n\n")
+            self.explanation_stream.flush()
+
+    def _record(self, battle: Battle, decision: Decision, context=None) -> BattleOrder:
         order = self._order(battle, decision.chosen)
         self.last_decision = decision
         self.decision_counts[decision.strategy] += 1
-        if self.explain:
-            print(f"Turn {battle.turn}: {decision.explanation}")
+        if context is not None:
+            text = format_turn(*context, decision)
+        else:
+            text = (
+                f"Battle {battle.battle_tag} | Turn {battle.turn}: "
+                f"{decision.chosen.kind}:{decision.chosen.name}; {decision.explanation}"
+            )
+        self._emit(text)
         return order
 
     def choose_move(self, battle: AbstractBattle) -> BattleOrder:
@@ -113,8 +146,14 @@ class ExplainableAgent(Player):
         if battle.force_switch:
             return self._fallback(battle, "forced replacement, outside the simultaneous table")
         try:
-            beliefs = flat_beliefs(battle)
-            forecast = dict.fromkeys(ACTION_CLASSES, 1 / len(ACTION_CLASSES))
+            state = None
+            if self.mode == "model":
+                state = state_from_battle(battle)
+                beliefs = public_beliefs(state)
+                forecast = self.opponent_model.predict_proba(build_features(state, beliefs))
+            else:
+                beliefs = flat_beliefs(battle)
+                forecast = dict.fromkeys(ACTION_CLASSES, 1 / len(ACTION_CLASSES))
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", PayoffApproximationWarning)
                 table = build_payoff_table(battle, beliefs, forecast)
@@ -123,6 +162,7 @@ class ExplainableAgent(Player):
                 if self.strategy == "best_response"
                 else minimax_lp(table, rng=self.rng)
             )
-            return self._record(battle, decision)
+            context = (state, beliefs, forecast, table) if state is not None else None
+            return self._record(battle, decision, context)
         except (PayoffUnavailable, ValueError, RuntimeError) as error:
             return self._fallback(battle, f"{type(error).__name__}: {error}")

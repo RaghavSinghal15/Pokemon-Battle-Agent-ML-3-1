@@ -1,0 +1,10 @@
+UNTRAINED FIXED-FORECAST SMOKE TEST; NOT E5
+
+Battle battle-gen9randombattle-3752 | Turn 1: volbeat (100%) vs gyarados (100%)
+Beliefs: Setup Sweeper 50%, Tera Blast user 50%
+Opponent forecast: attack 33%, non_damaging 33%, switch 33%
+Expected row payoffs after impossible-class renormalisation: move:encore -0.099 | move:lunge +0.011 | move:roost -0.099 | move:thunderwave -0.099 | switch:vaporeon -0.045 | switch:glaceon -0.079 | switch:chienpao -0.154 | switch:stantler -0.068 | switch:inteleon -0.092
+Chose move:lunge: Best response chooses move:lunge with expected payoff +0.011 using the supplied opponent probabilities.
+Utility is an approximate one-turn HP score plus KO bonus, not win probability.
+
+Battle battle-gen9randombattle-3755 | Turn 4: switch:munkidori; Fallback: forced replacement, outside the simultaneous table; healthiest legal replacement.
