@@ -15,6 +15,30 @@ Template:
 
 ---
 
+## 2026-11-22: Exact-move prediction from (position, candidate move) pairs (E6 #79, Raghav with Claude)
+**Decision:** for a decision where the opponent used a move, the candidates are the moves the
+beliefs allow plus those already revealed. A LightGBM classifier scores each (position,
+candidate) pair by whether that move was the one used; the scores are normalised within the
+decision. Pair features: belief probability, revealed, used last turn, attack or not, base
+power, accuracy, priority, type effectiveness against our active Pokemon, STAB, setup /
+recovery / hazard / Protect / pivot / status flags, the user's and target's HP, the user's
+boosts, the turn and the number of candidates.
+**Alternatives:** one multiclass model over all ~700 moves (most never apply to the Pokemon on
+the field); the belief prior alone.
+**Why:** scoring pairs lets one model learn "players pick super-effective, strong, same-type
+moves" across every species. Validation (all decisions where a move was used; the used move
+was a candidate 99.6% of the time, and misses count with probability 1e-4):
+
+| Model | Top-1 | Top-3 | Log loss |
+|---|---|---|---|
+| uniform over candidates | 22.4% | 61.7% | 1.713 |
+| belief prior | 30.7% | 72.4% | 1.622 |
+| LightGBM on pairs | 50.8% | 86.9% | 1.281 |
+
+The belief probability carries 25% of the gain, type effectiveness 15%, "used last turn" 10%.
+It is not wired into the payoff table yet: the table weights the opponent's moves by belief
+probabilities, and this model could replace those weights in a later change.
+
 ## 2026-11-22: Deep-learning opponent models: neither beats LightGBM; game history helps a little (DL1 #76, DL2 #77, Raghav with Claude)
 **Decision:** keep the per-turn LightGBM as the agent's opponent model. Report the two neural
 models as the comparison: DL1, a per-turn MLP (two ReLU layers with dropout, on the same 36
