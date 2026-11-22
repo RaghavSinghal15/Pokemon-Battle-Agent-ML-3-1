@@ -73,13 +73,14 @@ class SequenceOpponentModel:
         self.name, self.network, self.mean, self.std = name, network, mean, std
         self.classes, self.history = classes, history
 
-    def raw_proba_table(self, table: pd.DataFrame) -> np.ndarray:
+    def raw_proba_table(self, table: pd.DataFrame, sequences=None) -> np.ndarray:
+        """sequences: the table's games already prepared by _sequences (saves rebuilding)."""
+        if sequences is None:
+            sequences = _sequences(table, self.mean, self.std, self.classes, self.history)
         probs = np.zeros((len(table), len(self.classes)))
         self.network.eval()
         with torch.no_grad():
-            for rows, inputs, _ in _sequences(
-                table, self.mean, self.std, self.classes, self.history
-            ):
+            for rows, inputs, _ in sequences:
                 x = torch.tensor(inputs)
                 if self.history == "none":
                     logits = self.network(x[:, None, :])[:, 0, :]  # each step on its own
@@ -105,8 +106,8 @@ def _batches(sequences, generator):
         yield torch.tensor(inputs), torch.tensor(labels)
 
 
-def _val_loss(model: SequenceOpponentModel, val: pd.DataFrame) -> float:
-    probs = model.raw_proba_table(val)
+def _val_loss(model: SequenceOpponentModel, val: pd.DataFrame, sequences) -> float:
+    probs = model.raw_proba_table(val, sequences)
     truth = val[LABEL].map({c: i for i, c in enumerate(model.classes)}).to_numpy()
     return float(-np.log(np.clip(probs[np.arange(len(val)), truth], 1e-15, 1)).mean())
 
@@ -130,6 +131,7 @@ def train_sequence_model(
     )
     optimiser = torch.optim.Adam(network.parameters(), lr=LEARNING_RATE)
     loss_fn = nn.CrossEntropyLoss(ignore_index=-100)
+    val_sequences = _sequences(val, mean, std, classes, history)  # built once, not every epoch
     best_loss, best_state, stale, epochs = np.inf, None, 0, 0
     for epoch in range(max_epochs):
         network.train()
@@ -144,7 +146,7 @@ def train_sequence_model(
             loss = loss_fn(logits.reshape(-1, len(classes)), labels.reshape(-1))
             loss.backward()
             optimiser.step()
-        loss = _val_loss(model, val)
+        loss = _val_loss(model, val, val_sequences)
         epochs = epoch + 1
         if loss < best_loss - 1e-5:
             best_loss, stale = loss, 0

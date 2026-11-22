@@ -1,0 +1,171 @@
+{
+  "split": "val",
+  "training": {
+    "full": {
+      "history": "full",
+      "epochs": 15,
+      "val_log_loss": 0.8797729997619612,
+      "minutes": 83.78918837706247
+    },
+    "none": {
+      "history": "none",
+      "epochs": 28,
+      "val_log_loss": 0.8947016933656516,
+      "minutes": 3.4880548119544983
+    }
+  },
+  "results": {
+    "gru_full": {
+      "model": "GRU over the game (full history)",
+      "rows": 130600,
+      "hidden_rows": 13582,
+      "all_turns_log_loss": 0.677193458281349,
+      "switch_log_loss": 0.3519411278152635,
+      "actual_switch_share": 0.1708499234303216,
+      "mean_predicted_switch": 0.17051158286300291,
+      "visible_only": {
+        "model": "GRU over the game (full history)",
+        "rows": 117018,
+        "log_loss": 0.7324700543853263,
+        "accuracy": 0.6684441709822421,
+        "macro_f1": 0.583308092404404,
+        "confusion_matrix": [
+          [
+            56968,
+            6924,
+            3704
+          ],
+          [
+            12476,
+            13005,
+            1628
+          ],
+          [
+            11311,
+            2755,
+            8247
+          ]
+        ],
+        "mean_predicted": {
+          "attack": 0.5872282426227244,
+          "non_damaging": 0.2413664507048968,
+          "switch": 0.1714053066723788
+        }
+      }
+    },
+    "gru_none": {
+      "model": "GRU over the game (none history)",
+      "rows": 130600,
+      "hidden_rows": 13582,
+      "all_turns_log_loss": 0.6867473974614197,
+      "switch_log_loss": 0.3599042296289054,
+      "actual_switch_share": 0.1708499234303216,
+      "mean_predicted_switch": 0.16971779205905338,
+      "visible_only": {
+        "model": "GRU over the game (none history)",
+        "rows": 117018,
+        "log_loss": 0.7441277276149766,
+        "accuracy": 0.6613683364952401,
+        "macro_f1": 0.5704447050486933,
+        "confusion_matrix": [
+          [
+            56844,
+            7328,
+            3424
+          ],
+          [
+            12419,
+            13105,
+            1585
+          ],
+          [
+            11903,
+            2967,
+            7443
+          ]
+        ],
+        "mean_predicted": {
+          "attack": 0.5852353553803683,
+          "non_damaging": 0.24380464985095923,
+          "switch": 0.17095999476867252
+        }
+      }
+    },
+    "lightgbm_hidden": {
+      "model": "LightGBM (255 leaves, hidden folded)",
+      "rows": 130600,
+      "hidden_rows": 13582,
+      "all_turns_log_loss": 0.6695681928364166,
+      "switch_log_loss": 0.3532844534069558,
+      "actual_switch_share": 0.1708499234303216,
+      "mean_predicted_switch": 0.17274518279685572,
+      "visible_only": {
+        "model": "LightGBM (255 leaves, hidden folded)",
+        "rows": 117018,
+        "log_loss": 0.724730717110296,
+        "accuracy": 0.6720760908578167,
+        "macro_f1": 0.5834881241544728,
+        "confusion_matrix": [
+          [
+            57715,
+            6281,
+            3600
+          ],
+          [
+            12552,
+            12924,
+            1633
+          ],
+          [
+            11689,
+            2618,
+            8006
+          ]
+        ],
+        "mean_predicted": {
+          "attack": 0.589847905767576,
+          "non_damaging": 0.2359090067508563,
+          "switch": 0.1742430874815677
+        }
+      }
+    },
+    "mlp": {
+      "model": "MLP (256, 128)",
+      "rows": 130600,
+      "hidden_rows": 13582,
+      "all_turns_log_loss": 0.6812304361608477,
+      "switch_log_loss": 0.3566191287688753,
+      "actual_switch_share": 0.1708499234303216,
+      "mean_predicted_switch": 0.17204392407118252,
+      "visible_only": {
+        "model": "MLP (256, 128)",
+        "rows": 117018,
+        "log_loss": 0.7382244831954788,
+        "accuracy": 0.6630945666478661,
+        "macro_f1": 0.5694046935807268,
+        "confusion_matrix": [
+          [
+            57655,
+            6388,
+            3553
+          ],
+          [
+            13177,
+            12362,
+            1570
+          ],
+          [
+            12015,
+            2721,
+            7577
+          ]
+        ],
+        "mean_predicted": {
+          "attack": 0.5894021067626477,
+          "non_damaging": 0.23690614982494704,
+          "switch": 0.17369174341240523
+        }
+      }
+    }
+  }
+}
