@@ -75,7 +75,8 @@ def _marginals(
         probability = weight / total_weight
         roles[template.role] += probability
         unseen = template.moves - moves
-        slots_left = template.move_slots - len(moves)
+        # Copied moves (a transformed Ditto shows four of ours) can exceed the set's slots.
+        slots_left = max(0, template.move_slots - len(moves))
         if unseen and slots_left:
             for move in sorted(unseen):
                 move_probs[move] += probability * slots_left / len(unseen)

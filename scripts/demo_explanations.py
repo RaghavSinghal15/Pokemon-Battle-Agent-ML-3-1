@@ -1,0 +1,66 @@
+"""Explanation demo (M7b, #85): play one game against the heuristics bot and show every
+decision's reasoning.
+
+With the local server running:
+    python scripts/demo_explanations.py
+
+Prints each turn's explanation (matchup, beliefs about the opponent's set, the opponent
+forecast, every option's score and the choice) and saves it, with the game's replay, to
+reports/examples/. Needs the trained models in artifacts/ (see README).
+"""
+
+import argparse
+import asyncio
+import sys
+from datetime import datetime, timezone
+
+from poke_env import AccountConfiguration
+
+from pokeagent.config import BATTLE_FORMAT, REPORTS_DIR
+from pokeagent.eval.ablations import build_agent
+from pokeagent.eval.baselines import BASELINES
+
+EXAMPLES_DIR = REPORTS_DIR / "examples"
+
+
+class _Tee:
+    """Write the explanation log to the screen and a file at once."""
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, text):
+        for stream in self.streams:
+            stream.write(text)
+
+    def flush(self):
+        for stream in self.streams:
+            stream.flush()
+
+
+async def main(games: int) -> None:
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    EXAMPLES_DIR.mkdir(parents=True, exist_ok=True)
+    log_path = EXAMPLES_DIR / f"demo-{stamp}.log"
+    with log_path.open("w", encoding="utf-8") as log:
+        agent = build_agent(
+            "full",
+            account_configuration=AccountConfiguration(f"demo{stamp[-6:]}", None),
+            battle_format=BATTLE_FORMAT,
+            explanation_stream=_Tee(sys.stdout, log),
+            save_replays=str(EXAMPLES_DIR),
+        )
+        opponent = BASELINES["heuristics"](
+            account_configuration=AccountConfiguration(f"demoopp{stamp[-6:]}", None),
+            battle_format=BATTLE_FORMAT,
+        )
+        await agent.battle_against(opponent, n_battles=games)
+    print(
+        f"\nWon {agent.n_won_battles}/{games}. Explanations: {log_path}; replay in {EXAMPLES_DIR}"
+    )
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--games", type=int, default=1)
+    asyncio.run(main(parser.parse_args().games))

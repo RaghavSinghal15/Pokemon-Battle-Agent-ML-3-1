@@ -166,3 +166,11 @@ def test_copied_ability_keeps_the_sets_moves():
     result = tracker.update_belief(prior, seen)
     assert result.role_probs == {"Fast Attacker": pytest.approx(1.0)}
     assert "dragondance" not in result.move_probs
+
+
+def test_transformed_ditto_never_gets_negative_move_probabilities():
+    prior = tracker.prior_belief("ditto")
+    seen = PokemonView("ditto", 100, revealed_moves=["Sludge Bomb", "Shadow Ball", "Shore Up"])
+    result = tracker.update_belief(prior, seen)
+    assert all(0 <= p <= 1 for p in result.move_probs.values())
+    assert set(result.move_probs) == {"sludgebomb", "shadowball", "shoreup"}
