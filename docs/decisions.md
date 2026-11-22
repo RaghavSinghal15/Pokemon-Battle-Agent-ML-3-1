@@ -15,6 +15,24 @@ Template:
 
 ---
 
+## 2026-11-22: Play styles: four soft groups, and no style feature in the opponent model (E7 #80, Raghav with Claude)
+**Decision:** describe each player by six shares of their decisions in training games (switch,
+attack, setup, hazard, other status, Protect), cluster with k-means and a Gaussian mixture on
+standardised shares, and plot with PCA. Report the clusters; do not add a style feature to the
+opponent model.
+**Alternatives:** cluster on all six shares; use a player's style (from their other training
+games, leave-one-out) as features for LightGBM.
+**Why:** 1,058 players have 5+ training games. The shares add up to 1, so we cluster on five
+of them: with all six, the Gaussian mixture's covariances were near-singular and its BIC fell
+from 2,841 to 93 for no real reason. On five shares, k-means (best silhouette) and the mixture
+(best BIC) agree on four groups: switchers (23% switches), setup sweepers (11% setup),
+status/Protect users (15% other status) and hazard setters (4% hazards). The silhouette is
+only 0.18, so styles are a continuum with soft groups, not distinct types (2-D PCA keeps 53% of
+the variance). Adding the style to LightGBM made validation log loss worse (0.678 vs 0.670,
+also for the 83% of rows whose player has a known style), and early stopping came at 424 trees
+instead of 999: the near-unique style vector acts as a player fingerprint and the trees
+overfit to it. Usernames link a player's games locally and never leave data/.
+
 ## 2026-11-22: Drain, recoil, Substitute and end-of-turn HP in the payoff table (F11 #69, Raghav with Claude)
 **Decision:** drain moves heal their share of the damage dealt and recoil moves cost theirs
 (both converted to the user's HP); Substitute costs 1/4 of max HP, then absorbs hits and blocks
