@@ -56,6 +56,7 @@ class ExplainableAgent(Player):
         utility: Literal["hp", "value"] = "hp",
         value_model=None,
         belief_updates: bool = True,
+        exact_move_model=None,
         **kwargs,
     ):
         if strategy not in ("best_response", "lp"):
@@ -75,6 +76,8 @@ class ExplainableAgent(Player):
         self.utility, self.value_model = utility, value_model
         # Ablation (A6): False keeps every opponent belief at its Random Battle prior.
         self.belief_updates = belief_updates
+        # E8: split each action class's probability among moves by the exact-move model (E6).
+        self.exact_move_model = exact_move_model
         self.explanation_stream = explanation_stream
         self.last_explanation = ""
         self.decision_counts = Counter()
@@ -213,6 +216,8 @@ class ExplainableAgent(Player):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", PayoffApproximationWarning)
                 extra = {"scorer": scorer} if scorer is not None else {}
+                if self.exact_move_model is not None and state is not None:
+                    extra["move_weights"] = self.exact_move_model.move_weights(state)
                 table = build_payoff_table(battle, beliefs, forecast, **extra)
             decision = (
                 best_response(table)

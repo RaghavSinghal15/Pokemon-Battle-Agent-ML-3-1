@@ -70,3 +70,22 @@ def test_effectiveness_from_the_type_chart():
     assert _effectiveness("GROUND", gholdengo) == 2
     assert _effectiveness("NORMAL", gholdengo) == 0
     assert _effectiveness("ELECTRIC", PokemonView("garchomp", 77)) == 0
+
+
+def test_live_move_weights_come_from_the_opponents_side():
+    """The agent's state is from our side; weights describe the opponent's active Pokemon."""
+    from dataclasses import replace
+
+    from pokeagent.models.exact_move import PAIR_FEATURES, ExactMoveModel
+
+    class Booster:
+        def predict_proba(self, table):
+            assert list(table.columns) == list(PAIR_FEATURES)
+            scores = np.arange(1, len(table) + 1, dtype=float)
+            return np.column_stack([1 - scores / 10, scores / 10])
+
+    state = make_state()
+    ours = replace(state, perspective="p2", me=state.opp, opp=state.me)  # Gholdengo is theirs
+    weights = ExactMoveModel(Booster()).move_weights(ours)
+    assert set(weights) == {"makeitrain", "shadowball", "nastyplot", "recover"}
+    assert sum(weights.values()) == pytest.approx(1)

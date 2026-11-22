@@ -279,3 +279,23 @@ def test_belief_found_after_a_form_change():
     assert belief_for("palafinhero", {"palafin": palafin}) is palafin
     assert belief_for("mimikyubusted", {"mimikyu": palafin}) is palafin
     assert belief_for("garchomp", {"palafin": palafin}) is None
+
+
+def test_exact_move_weights_split_each_class():
+    """E8: the class mass is shared by the exact-move model's weights, not belief inclusion."""
+    battle, beliefs = table_battle(
+        candidates={"seismictoss": 0.75, "nightshade": 0.25, "protect": 1}
+    )
+    forecast = {"attack": 0.6, "non_damaging": 0.4, "switch": 0.0}
+    weights = {"seismictoss": 0.2, "nightshade": 0.6, "protect": 0.2}
+    with pytest.warns(PayoffApproximationWarning):
+        table = build_payoff_table(battle, beliefs, forecast, move_weights=weights)
+    probs = dict(zip([a.name for a in table.opp_actions], table.opp_probs, strict=True))
+    assert probs["nightshade"] == pytest.approx(0.6 * 0.6 / 0.8)
+    assert probs["seismictoss"] == pytest.approx(0.6 * 0.2 / 0.8)
+    assert probs["protect"] == pytest.approx(0.4)
+    # A candidate the model did not score keeps a tiny weight rather than vanishing.
+    with pytest.warns(PayoffApproximationWarning):
+        table = build_payoff_table(battle, beliefs, forecast, move_weights={"nightshade": 1.0})
+    probs = dict(zip([a.name for a in table.opp_actions], table.opp_probs, strict=True))
+    assert 0 < probs["seismictoss"] < 0.001

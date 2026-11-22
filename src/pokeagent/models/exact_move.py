@@ -14,6 +14,7 @@ counts as a miss: it is in the log loss with a small floor probability, and in "
 """
 
 import json
+import pickle
 from dataclasses import replace
 from functools import cache
 from math import prod
@@ -26,6 +27,7 @@ from poke_env.data import GenData, to_id_str
 from pokeagent.beliefs.tracker import beliefs_for
 from pokeagent.config import (
     DECISION_POINTS_PATH,
+    EXACT_MOVE_MODEL_PATH,
     MOVE_PAIRS_PATH,
     RANDOM_BATTLE_GENERATION,
     REPORTS_DIR,
@@ -143,6 +145,40 @@ def candidate_rows(state: PublicState, last_move: str | None) -> list[dict]:
     return rows
 
 
+class ExactMoveModel:
+    """The trained pair scorer, saved for the agent: move weights for the opponent's next move."""
+
+    def __init__(self, booster):
+        self.booster = booster
+
+    def move_weights(self, state: PublicState) -> dict[str, float]:
+        """P(move | they use a move) for each candidate of `state.opp.active`.
+
+        `state` is from OUR side (as the agent has it); the opponent is the mover here.
+        """
+        mover = replace(
+            state,
+            perspective=state.opp.player,
+            me=state.opp,
+            opp=state.me,
+            my_last_action=state.opp_last_action,
+            opp_last_action=state.my_last_action,
+        )
+        last = mover.my_last_action
+        last_move = last.name if last is not None and last.kind == "move" else None
+        rows = candidate_rows(mover, last_move)
+        if not rows:
+            return {}
+        table = pd.DataFrame(rows)
+        scores = self.booster.predict_proba(table[list(PAIR_FEATURES)].astype(float))[:, 1]
+        total = scores.sum()
+        if total <= 0:
+            return {}
+        return {
+            move: float(score / total) for move, score in zip(table["move"], scores, strict=True)
+        }
+
+
 def build_pairs(decision_points=DECISION_POINTS_PATH, splits=SPLITS_PATH, out=PAIRS_PATH) -> int:
     """Write one row per (decision where a move was used, candidate move). Returns decisions."""
     split_of = _split_by_battle(splits)
@@ -251,6 +287,8 @@ def train_and_report() -> dict:
         ),
         "LightGBM on (state, move) pairs": evaluate_moves(val, _normalise(val, scores)),
     }
+    with EXACT_MOVE_MODEL_PATH.open("wb") as stream:
+        pickle.dump(ExactMoveModel(model), stream)
     gains = model.booster_.feature_importance(importance_type="gain")
     report = {
         "split": "val",

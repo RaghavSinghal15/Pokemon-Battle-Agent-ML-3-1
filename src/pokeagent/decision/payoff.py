@@ -31,6 +31,7 @@ from pokeagent.interfaces import ACTION_CLASSES, Action, BeliefState, PayoffTabl
 from pokeagent.models.labels import move_class
 
 SWITCH_COLUMN = "__opponent_switch__"  # A modelled column, never an executable action.
+_UNSCORED_WEIGHT = 1e-3  # a candidate the exact-move model gave (almost) nothing
 
 
 class PayoffApproximationWarning(UserWarning):
@@ -114,7 +115,11 @@ def _probabilities(moves, switch_available, class_probs, complete_move_pool):
 
 
 def build_payoff_table(
-    battle: Battle, beliefs: BeliefState, class_probs: dict[str, float] | None, scorer=None
+    battle: Battle,
+    beliefs: BeliefState,
+    class_probs: dict[str, float] | None,
+    scorer=None,
+    move_weights: dict[str, float] | None = None,
 ) -> PayoffTable:
     """Compare legal moves/switches against candidate moves and one aggregate switch column.
 
@@ -126,6 +131,9 @@ def build_payoff_table(
     New voluntary tera options are deferred; already changed types are retained.
     scorer (V4): a decision.value_utility.ValueScorer; cells are then the change in predicted
     P(win) instead of HP traded plus a knockout bonus.
+    move_weights (E8): P(move | they use a move) from the exact-move model (E6). Within each
+    action class, the class probability is split by these instead of by belief inclusion
+    probabilities. Candidates the model did not score keep a tiny weight.
     """
     if not isinstance(battle, Battle) or battle.gen != 9 or battle.force_switch:
         raise PayoffUnavailable("A table requires a normal Gen 9 singles turn")
@@ -134,7 +142,14 @@ def build_payoff_table(
         raise PayoffUnavailable("Both active Pokemon must be alive and revealed")
     me_key = next(k for k, mon in battle.team.items() if mon is me)
     return _table(
-        battle, beliefs, class_probs, me_key, _rows(battle, me_key), entering=False, scorer=scorer
+        battle,
+        beliefs,
+        class_probs,
+        me_key,
+        _rows(battle, me_key),
+        entering=False,
+        scorer=scorer,
+        move_weights=move_weights,
     )
 
 
@@ -199,7 +214,18 @@ def replacement_tables(
     return tables
 
 
-def _table(battle, beliefs, class_probs, me_key, rows, *, entering, lookahead=True, scorer=None):
+def _table(
+    battle,
+    beliefs,
+    class_probs,
+    me_key,
+    rows,
+    *,
+    entering,
+    lookahead=True,
+    scorer=None,
+    move_weights=None,
+):
     """Score rows for our Pokemon at me_key against the opponent's active Pokemon.
 
     entering=True charges hazard damage on every row, because that Pokemon is arriving.
@@ -214,6 +240,9 @@ def _table(battle, beliefs, class_probs, me_key, rows, *, entering, lookahead=Tr
     if not rows or len({(a.kind, a.name) for a, _, _ in rows}) != len(rows):
         raise PayoffUnavailable("Legal actions are empty or have duplicate labels")
     moves = _opponent_moves(battle, beliefs)
+    if move_weights:
+        # The candidate list stays the same; only how the forecast is shared among them changes.
+        moves = [(m, max(move_weights.get(m.id, 0.0), _UNSCORED_WEIGHT)) for m, _ in moves]
     if not moves:
         raise PayoffUnavailable(
             "No opponent move candidates; supply public priors or revealed moves"
@@ -260,6 +289,7 @@ def _table(battle, beliefs, class_probs, me_key, rows, *, entering, lookahead=Tr
                 entering=False,
                 lookahead=False,
                 scorer=scorer,
+                move_weights=move_weights,
             )
         return _table_value(inner)
 
