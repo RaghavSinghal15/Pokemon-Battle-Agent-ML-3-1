@@ -15,6 +15,32 @@ Template:
 
 ---
 
+## 2026-11-22: Deep-learning opponent models: neither beats LightGBM; game history helps a little (DL1 #76, DL2 #77, Raghav with Claude)
+**Decision:** keep the per-turn LightGBM as the agent's opponent model. Report the two neural
+models as the comparison: DL1, a per-turn MLP (two ReLU layers with dropout, on the same 36
+features), and DL2, a GRU that reads the player's whole game so far (each decision's features
+plus their previous action, including "hidden").
+**Alternatives:** use the GRU in the agent; a small transformer instead of the GRU.
+**Why:** validation, all-turns log loss (all trained with the hidden class, same splits):
+
+| Model | Log loss | Accuracy | Macro-F1 |
+|---|---|---|---|
+| naive class frequencies | 0.891 | 57.8% | 0.244 |
+| logistic regression | 0.759 | 62.7% | 0.511 |
+| MLP (256, 128), DL1 | 0.681 | 66.3% | 0.569 |
+| GRU, no memory (ablation) | 0.687 | 66.1% | 0.570 |
+| GRU over the game, DL2 | 0.677 | 66.8% | 0.583 |
+| LightGBM (chosen) | 0.670 | 67.2% | 0.584 |
+
+The same GRU with its memory removed loses 0.0095, so what this player did earlier in the game
+carries real signal beyond the current position (and beyond the "last action" features). But
+LightGBM on the per-turn features is still best: on tabular features like ours, boosted trees
+usually beat neural networks, and most of the history's value is already in the position. The
+GRU also costs far more to train (84 minutes against a few for LightGBM) and needs the game
+history at play time. A transformer would answer the same question with more parameters; the
+GRU's small gain suggests it would not change the conclusion. A test cuts each game after turn
+N and checks that predictions up to N do not change, so the GRU cannot see the future.
+
 ## 2026-11-22: Play styles: four soft groups, and no style feature in the opponent model (E7 #80, Raghav with Claude)
 **Decision:** describe each player by six shares of their decisions in training games (switch,
 attack, setup, hazard, other status, Protect), cluster with k-means and a Gaussian mixture on
