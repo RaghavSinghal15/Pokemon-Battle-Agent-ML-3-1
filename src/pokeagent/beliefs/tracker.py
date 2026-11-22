@@ -154,17 +154,26 @@ def update_belief(belief: SetBelief, seen: PokemonView) -> SetBelief:
 
     templates = _templates(species)
     role_counts = Counter(template.role for template in templates)
-    weights = []
-    for template in templates:
-        prior_weight = belief.role_probs.get(template.role, 0.0) / role_counts[template.role]
-        weight = prior_weight * _likelihood(template, moves, ability, tera_type)
-        if weight > 0:
-            weights.append((template, weight))
 
+    def weigh(seen_moves, seen_ability, seen_tera):
+        weights = []
+        for template in templates:
+            prior_weight = belief.role_probs.get(template.role, 0.0) / role_counts[template.role]
+            weight = prior_weight * _likelihood(template, seen_moves, seen_ability, seen_tera)
+            if weight > 0:
+                weights.append((template, weight))
+        return weights
+
+    # Evidence can contradict every template: Trace and Imposter show a copied ability, Ditto
+    # and Mimic show copied moves, and sets change between versions. Drop the least reliable
+    # evidence first (ability, then tera type, then moves) until some template fits, so the
+    # payoff table still has the set's moves to consider. Observed moves always stay certain.
+    weights = weigh(moves, ability, tera_type)
+    if not weights:
+        weights = weigh(moves, "", tera_type) or weigh(moves, "", "") or weigh(frozenset(), "", "")
     result = _marginals(species, weights, moves, ability, tera_type)
     if not weights:
-        # A copied move, changed ability or older set can contradict every template.
-        # Keep the role prior and the observations without guessing unseen details.
+        # No template at all (a species missing from the sets file): keep the role prior.
         result.role_probs = belief.role_probs.copy()
     if item and item != "unknownitem" and not seen.item_removed:
         result.item_probs = {item: 1.0}
