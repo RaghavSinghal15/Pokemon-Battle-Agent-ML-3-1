@@ -28,6 +28,10 @@ dev = [
     "ruff",
     "nbstripout",
 ]
+# The deep-learning comparison (DL1-DL3). Imported only inside src/pokeagent/dl/.
+dl = [
+    "torch",
+]
 # Version 2 only. Do not import these from version 1 code.
 v2 = [
     "shap",
