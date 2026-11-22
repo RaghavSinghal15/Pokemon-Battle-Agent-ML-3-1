@@ -138,3 +138,17 @@ def test_beliefs_for_uses_the_revealed_opponent_team_only():
     assert beliefs["garchomp"].move_probs == {"spikes": 1}
     assert beliefs["corviknight"].move_probs == {"roost": 1}
     assert set(beliefs) == {"garchomp", "corviknight"}
+
+
+def test_cosmetic_form_uses_its_base_species_sets(tmp_path, monkeypatch):
+    """#60: sets.json lists only base species; a cosmetic form plays exactly the same."""
+    path = tmp_path / "sets.json"
+    sets = [
+        _template("Bulky Setup", "Shell Smash, Stored Power, Strength Sap", "Weak Armor", "Psychic")
+    ]
+    path.write_text(json.dumps({"polteageist": {"sets": sets}}), encoding="utf-8")
+    monkeypatch.setattr(tracker, "RANDOM_BATTLE_SETS_PATH", path)
+    base, form = tracker.prior_belief("polteageist"), tracker.prior_belief("polteageistantique")
+    assert form.species == "polteageistantique"
+    assert form.move_probs == base.move_probs and form.move_probs["shellsmash"] == 1
+    assert tracker.prior_belief("notapokemon").move_probs == {}
