@@ -35,6 +35,13 @@ the model predicts. The same ordered columns are available in replay and live pl
 | `opp_last_attack` | Whether their previous observed action was a Physical or Special move. |
 | `opp_last_non_damaging` | Whether their previous observed action was a Status move. |
 | `opp_last_switch` | Whether their previous observed action was a switch. |
+| `opp_expected_status_moves` | Expected number of Status (non-damaging) moves in their set: the sum of their inclusion probabilities. |
+| `opp_status_move_useful` | Highest inclusion probability among their status-inflicting moves that could affect our active Pokémon now: it has no status and is not immune (Electric can't be paralysed, Fire can't be burned, Poison and Steel can't be poisoned, Grass ignores powder moves, and type immunities such as Ground against Thunder Wave). |
+| `opp_hazard_move_useful` | Highest inclusion probability among their hazard moves (Stealth Rock, Spikes, Toxic Spikes, Sticky Web) whose hazard is not yet at its maximum on our side, if we have more than one Pokémon left. |
+| `opp_hazard_removal_useful` | Highest inclusion probability among their hazard-removal moves (Rapid Spin, Defog, Mortal Spin, Tidy Up, Court Change), if hazards are on their side. |
+| `opp_protect_probability` | Highest inclusion probability among their Protect-like moves. |
+| `opp_substitute_probability` | Inclusion probability of Substitute. |
+| `opp_pivot_move_probability` | Highest inclusion probability among moves that switch the user out (U-turn, Volt Switch, Flip Turn, Parting Shot, Teleport, Chilly Reception, Shed Tail). |
 
 Type matchup is a proxy for same-type attacks. It uses the defending Tera type where
 known, adds the attacking Tera type to the original types, and treats Stellar as the
