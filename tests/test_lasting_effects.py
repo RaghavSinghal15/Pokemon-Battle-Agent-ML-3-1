@@ -167,3 +167,12 @@ def test_stealth_rock_row_gains_the_weighted_hazard_value(monkeypatch):
     # Against Seismic Toss, Garchomp sets the rock in every cell: +0.5 x 5/8.
     assert on["stealthrock"][0] - off["stealthrock"][0] == pytest.approx(0.5 * 5 / 8, abs=0.01)
     assert on["earthquake"] == off["earthquake"]
+
+
+def test_zero_weights_skip_the_lookahead(monkeypatch):
+    battle, beliefs = setup_battle()
+    calls = []
+    monkeypatch.setattr(payoff, "lasting_effect", lambda *a: calls.append(a))
+    monkeypatch.setattr(payoff, "PAYOFF_HAZARD_WEIGHT", 0.0)
+    table(battle, beliefs, 0.0, monkeypatch)
+    assert calls == []  # both weights zero: no lasting effect is even computed

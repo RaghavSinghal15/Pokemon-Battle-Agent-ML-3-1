@@ -197,6 +197,8 @@ def _table(battle, beliefs, class_probs, me_key, rows, *, entering, lookahead=Tr
 
     # Lasting effects: value = (next turn's table value with the effect - without it), times
     # PAYOFF_EFFECT_TURNS. Next turn is approximated from the current position (HP as now).
+    # With both weights at zero no lasting effect can count, so skip the extra work.
+    lookahead = lookahead and bool(PAYOFF_EFFECT_TURNS or PAYOFF_HAZARD_WEIGHT)
     futures: dict[tuple[str, str], tuple[float, bool, bool] | None] = {}
     base: list[float] = []
     # Next turn's rows come from the real battle: the copies made for lasting effects have
