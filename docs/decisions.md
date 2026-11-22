@@ -15,6 +15,23 @@ Template:
 
 ---
 
+## 2026-11-22: Opponent model v1 candidates: logistic regression and LightGBM, chosen by validation log loss (E2 #15, E3 #31, Raghav with Claude)
+**Decision:** both models train on the train split; every choice (logistic regression's C,
+LightGBM's leaves per tree and number of trees by early stopping) is made on validation log
+loss. `models.opponent.load_split` refuses the test split unless asked explicitly, so test is
+read once, in E5. Log loss is the headline metric, because the payoff table multiplies by the
+probabilities; accuracy and macro-F1 are reported alongside.
+**Alternatives:** choose by accuracy or macro-F1; cross-validation by battle instead of one
+validation split; a wider hyperparameter search.
+**Why:** validation results (117,018 decision points): uniform 1.099, naive class frequencies
+0.972, logistic regression 0.854, LightGBM 0.774 (accuracy 0.578, 0.614, 0.654; macro-F1 0.244,
+0.469, 0.556). C made no difference (0.8539 for 0.01 to 10), so the linear model is limited by
+its form, not by overfitting; LightGBM's gain shows it uses interactions the linear model
+cannot. LightGBM's three tree sizes were within 0.002 of each other (15 leaves 0.7755, 63
+0.7738, 255 0.7735), so a wider search is unlikely to matter. One validation split of 2,412
+battles is large enough that differences of this size are not noise. Validation numbers are
+slightly optimistic because validation chose the settings; E5 reports test.
+
 ## 2026-11-20: Save tournament replays from the spectator channel (A5, Devam)
 **Decision.** Capture finished rooms through a separate spectator session while games run.
 Write a separate local JSONL archive with one outcome and public log per fresh battle.

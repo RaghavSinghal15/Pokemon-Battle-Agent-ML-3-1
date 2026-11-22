@@ -1,0 +1,211 @@
+{
+  "split": "val",
+  "classes": [
+    "attack",
+    "non_damaging",
+    "switch"
+  ],
+  "train_class_frequencies": {
+    "attack": 0.5769,
+    "non_damaging": 0.2331,
+    "switch": 0.19
+  },
+  "uniform_log_loss": 1.0986122886681098,
+  "models": [
+    {
+      "model": "naive (class frequencies)",
+      "rows": 117018,
+      "log_loss": 0.9717997644184855,
+      "accuracy": 0.5776547197866995,
+      "macro_f1": 0.2440984974053972,
+      "confusion_matrix": [
+        [
+          67596,
+          0,
+          0
+        ],
+        [
+          27109,
+          0,
+          0
+        ],
+        [
+          22313,
+          0,
+          0
+        ]
+      ],
+      "mean_predicted": {
+        "attack": 0.5768584079928389,
+        "non_damaging": 0.23313488522397674,
+        "switch": 0.19000670678233383
+      }
+    },
+    {
+      "model": "logistic regression (C=0.01)",
+      "rows": 117018,
+      "log_loss": 0.8538706396397331,
+      "accuracy": 0.613640636483276,
+      "macro_f1": 0.46921022875916374,
+      "confusion_matrix": [
+        [
+          59821,
+          3958,
+          3817
+        ],
+        [
+          20248,
+          5185,
+          1676
+        ],
+        [
+          13973,
+          1539,
+          6801
+        ]
+      ],
+      "mean_predicted": {
+        "attack": 0.5757354679884473,
+        "non_damaging": 0.23176196659488582,
+        "switch": 0.192502565416671
+      }
+    },
+    {
+      "model": "LightGBM (255 leaves)",
+      "rows": 117018,
+      "log_loss": 0.7735454789332594,
+      "accuracy": 0.6534550240133996,
+      "macro_f1": 0.5564213738377884,
+      "confusion_matrix": [
+        [
+          58062,
+          4611,
+          4923
+        ],
+        [
+          16316,
+          8549,
+          2244
+        ],
+        [
+          10858,
+          1600,
+          9855
+        ]
+      ],
+      "mean_predicted": {
+        "attack": 0.5763286110160348,
+        "non_damaging": 0.23044611320069297,
+        "switch": 0.1932252757832778
+      }
+    }
+  ],
+  "lr_c_search": [
+    {
+      "C": 0.01,
+      "val_log_loss": 0.8538706396397331
+    },
+    {
+      "C": 0.1,
+      "val_log_loss": 0.8538775899391952
+    },
+    {
+      "C": 1.0,
+      "val_log_loss": 0.8538783173170647
+    },
+    {
+      "C": 10.0,
+      "val_log_loss": 0.8538783903812255
+    }
+  ],
+  "lightgbm_search": [
+    {
+      "leaves": 15,
+      "trees": 2376,
+      "val_log_loss": 0.7754639237074347
+    },
+    {
+      "leaves": 63,
+      "trees": 940,
+      "val_log_loss": 0.7737629562290705
+    },
+    {
+      "leaves": 255,
+      "trees": 269,
+      "val_log_loss": 0.7735454789332594
+    }
+  ],
+  "lightgbm_gain_share": {
+    "my_revealed_moves": 0.09563228335611153,
+    "opp_hp": 0.08790206491717943,
+    "opp_best_recovery_move_probability": 0.07839697032625748,
+    "my_hp": 0.07151599260333011,
+    "opp_boost_sum": 0.06961038738003048,
+    "opp_revealed_moves": 0.06691354577799191,
+    "my_type_matchup": 0.06361776742023241,
+    "opp_last_attack": 0.06319109178719623,
+    "opp_remaining": 0.05748917183717447,
+    "opp_best_setup_move_probability": 0.04579285747944363,
+    "speed_advantage": 0.044063754750239596,
+    "turn": 0.03965793012879626,
+    "opp_type_matchup": 0.03035665495736219,
+    "opp_last_non_damaging": 0.029176940220061925,
+    "my_boost_sum": 0.027045201417273984,
+    "my_remaining": 0.02588146720235076,
+    "opp_hazard_layers": 0.017065487037657853,
+    "my_hazard_layers": 0.015543911499424192,
+    "opp_unrevealed": 0.014117484530325861,
+    "my_unrevealed": 0.013230326239096658,
+    "opp_last_switch": 0.012077528785388017,
+    "opp_status": 0.007501696462112474,
+    "my_status": 0.005865883597591409,
+    "opp_tera_used": 0.00523110971079355,
+    "my_tera_used": 0.00462914577415845,
+    "my_paralyzed": 0.003776691154976472,
+    "opp_paralyzed": 0.0023064481152754394,
+    "opp_choice_item_known": 0.0022750634514619463,
+    "trick_room": 0.0001351420807053006
+  },
+  "by_turn": [
+    {
+      "turns": "1-1",
+      "rows": 4736,
+      "switch_share": 0.29624155405405406,
+      "naive (class frequencies)": 1.0949280980987546,
+      "logistic regression (C=0.01)": 1.0179961199106629,
+      "LightGBM (255 leaves)": 0.9549518574667413
+    },
+    {
+      "turns": "2-5",
+      "rows": 17951,
+      "switch_share": 0.2540805526154532,
+      "naive (class frequencies)": 1.030417560301787,
+      "logistic regression (C=0.01)": 0.8875165793143849,
+      "LightGBM (255 leaves)": 0.7939243564108766
+    },
+    {
+      "turns": "6-15",
+      "rows": 41364,
+      "switch_share": 0.20829706991586888,
+      "naive (class frequencies)": 0.977858958421284,
+      "logistic regression (C=0.01)": 0.855136530363789,
+      "LightGBM (255 leaves)": 0.7793176319838957
+    },
+    {
+      "turns": "16-30",
+      "rows": 38669,
+      "switch_share": 0.15045643797357056,
+      "naive (class frequencies)": 0.9274517831004353,
+      "logistic regression (C=0.01)": 0.822131874553409,
+      "LightGBM (255 leaves)": 0.7468463414290625
+    },
+    {
+      "turns": "31+",
+      "rows": 14298,
+      "switch_share": 0.13393481605818996,
+      "naive (class frequencies)": 0.9598313595118565,
+      "logistic regression (C=0.01)": 0.8394397727737674,
+      "LightGBM (255 leaves)": 0.7433809643877288
+    }
+  ]
+}
