@@ -38,3 +38,10 @@ def test_minimax_explains_mixture_and_worst_case_instead_of_forecast_expectation
     assert "Row worst cases" in text
     assert "worst-case expected payoff" in text
     assert "Expected row payoffs" not in text
+
+
+def test_value_utility_states_its_units_and_current_win_probability():
+    table, beliefs, forecast = example()
+    text = format_turn(make_state(), beliefs, forecast, table, best_response(table), 0.62)
+    assert "changes in our predicted win probability" in text and "(now 62%)" in text
+    assert "not win probability" not in text

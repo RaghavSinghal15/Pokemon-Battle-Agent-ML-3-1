@@ -12,6 +12,7 @@ def format_turn(
     class_probs: dict[str, float],
     table: PayoffTable,
     decision: Decision,
+    win_probability: float | None = None,
 ) -> str:
     """Explain public beliefs, the forecast and the strategy's actual scoring criterion.
 
@@ -70,5 +71,13 @@ def format_turn(
         )
     )
     lines.append(f"Chose {action_label(decision.chosen)}: {decision.explanation}")
-    lines.append("Utility is an approximate one-turn HP score plus KO bonus, not win probability.")
+    if win_probability is None:
+        lines.append(
+            "Utility is an approximate one-turn HP score plus KO bonus, not win probability."
+        )
+    else:
+        lines.append(
+            f"Payoffs are changes in our predicted win probability this turn (now"
+            f" {win_probability:.0%}): +0.050 means 5 points more likely to win."
+        )
     return "\n".join(lines)

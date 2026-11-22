@@ -68,6 +68,20 @@ python scripts/play_baselines.py --games 20
 
 If the last command prints win counts for two bots, your setup is complete.
 
+### Watch the agent explain itself
+
+The full agent needs its trained models in `artifacts/` (git-ignored): build the data and
+features (docs/07-setup.md), then `python -m pokeagent.models.train` and
+`python -m pokeagent.models.train_value`. Then, with the server running:
+
+```bash
+python scripts/demo_explanations.py        # one game; every turn's reasoning is printed
+```
+
+For each decision it prints the matchup, the beliefs about the opponent's set, the opponent
+forecast, every option's score (the change in predicted win probability) and the choice.
+An annotated example game is in [`reports/examples/annotated_game.md`](reports/examples/annotated_game.md).
+
 ## Repository layout
 
 ```
