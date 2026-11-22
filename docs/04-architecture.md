@@ -43,6 +43,7 @@ All shapes are defined in [`src/pokeagent/interfaces.py`](../src/pokeagent/inter
 | C | `PublicState` from a live battle | D, F |
 | D | `BeliefState` for any state | D (features), F |
 | D | `data/processed/features.parquet`: ids, `FEATURE_NAMES` columns, action class label | E |
+| C, D | `data/processed/hidden_points.parquet` and `hidden_features.parquet`: turns whose choice the log hides, labelled "hidden" (`--hidden` on both exports) | E (label-bias correction) |
 | E | `artifacts/opponent_model.pkl` and `OpponentModel.predict_proba` | F |
 | F | `Decision` and explanation text | A (logs), demo |
 | A | `reports/results/*.csv` | report |

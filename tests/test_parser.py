@@ -12,7 +12,7 @@ import pytest
 from pokeagent.interfaces import Action, PublicState
 from pokeagent.parser.export import export_decision_points
 from pokeagent.parser.live import iter_live_states, state_from_battle
-from pokeagent.parser.replay import iter_public_states, parse_battle
+from pokeagent.parser.replay import hidden_choice_states, iter_public_states, parse_battle
 
 START = """|player|p1|Alice|1|1500
 |player|p2|Bob|2|1600
@@ -145,6 +145,18 @@ def test_export_writes_schema_and_counts_unsupported_battles(tmp_path):
     assert (summary.battles, summary.rows, summary.errors) == (1, 1, {})
 
 
+def test_hidden_export_writes_only_hidden_choice_turns(tmp_path):
+    source = tmp_path / "battles.parquet"
+    output = tmp_path / "hidden_points.parquet"
+    turn = "|move|p1a: Sparky|Thunderbolt|p2a: Corviknight\n|faint|p2a: Corviknight"
+    log = f"{START}\n{turn}\n|win|Alice"
+    pq.write_table(pa.Table.from_pylist([{"battle_id": "a", "log": log}]), source)
+    summary = export_decision_points(source, output, hidden=True)
+    (row,) = pq.read_table(output).to_pylist()
+    assert summary.rows == 1
+    assert (row["turn"], row["perspective"], row["action"], row["won"]) == (1, "p2", None, None)
+
+
 @pytest.mark.showdown
 def test_parity_on_recorded_local_battles():
     capture = os.environ.get("POKEAGENT_PARSER_CAPTURE")
@@ -164,3 +176,33 @@ def test_parity_on_recorded_local_battles():
                 checked += len(actual)
     assert games >= 1_000
     assert checked > 0
+
+
+@pytest.mark.parametrize(
+    "turn, hidden_sides",
+    [
+        ("|cant|p2a: Corviknight|par", ["p2"]),  # fully paralysed: chose, but never acted
+        ("|-damage|p2a: Corviknight|72/100|[from] confusion", ["p2"]),
+        ("|faint|p2a: Corviknight", ["p2"]),  # knocked out before moving
+        ("|drag|p2a: Charizard|Charizard, L85|100/100", ["p2"]),  # Roar before it moved
+        ("|move|p2a: Corviknight|Outrage|p1a: Sparky|[from]lockedmove", []),  # forced
+        ("|cant|p2a: Corviknight|recharge", []),  # forced
+        ("|move|p2a: Corviknight|Roost|p2a: Corviknight", []),  # observed
+    ],
+)
+def test_hidden_choices_are_kept_separately_and_lock_ins_are_not(turn, hidden_sides):
+    log = f"""{START}
+|move|p1a: Sparky|Thunderbolt|p2a: Corviknight
+{turn}
+|upkeep
+|turn|2
+|tie"""
+    states = hidden_choice_states("a", log)
+    assert [(s.turn, s.perspective) for s in states] == [(1, side) for side in hidden_sides]
+
+
+def test_forfeit_before_anyone_acts_is_not_a_hidden_choice():
+    log = f"""{START}
+|-message|Bob forfeited.
+|win|Alice"""
+    assert hidden_choice_states("a", log) == []
