@@ -15,6 +15,18 @@ Template:
 
 ---
 
+## 2026-11-20: Newest-sample ties filled by battle id; rebuild refuses first (B, #64, Raghav with Claude)
+**Decision:** when `--max-battles` cuts through battles uploaded in the same second, every
+battle strictly newer than that second is kept, and the remaining places go to the tied
+battles in battle-id order. The build checks for an existing `splits.json` before it downloads
+or filters anything.
+**Alternatives:** keep ties in file order (what B2 did); keep all ties and exceed the limit;
+check the split only when saving it (what B4 did).
+**Why:** Devam's reviews of #56 and #58 reproduced both bugs. File order could drop a newer
+battle for an older tie, so the sample depended on how Hugging Face happened to store the
+rows. Battle-id order is deterministic and independent of storage. Exceeding the limit would
+make `--max-battles` mean something different from what it says. Checking the split last let a
+refused run replace the files the frozen split refers to.
 ## 2026-11-22: Action-class labels follow the move's category, in one shared rule (E1 #14, Raghav with Claude)
 **Decision:** a switch is "switch"; a move is "attack" if its official category is Physical or
 Special and "non_damaging" if it is Status (Showdown's Gen 9 move data, via poke-env). The rule is
