@@ -7,8 +7,14 @@ from dataclasses import replace
 
 import numpy as np
 from poke_env.battle import Battle, Move
+from poke_env.data import GenData, to_id_str
 
-from pokeagent.config import PAYOFF_EFFECT_TURNS, PAYOFF_HAZARD_WEIGHT, RANDOM_BATTLE_TEAM_SIZE
+from pokeagent.config import (
+    PAYOFF_EFFECT_TURNS,
+    PAYOFF_HAZARD_WEIGHT,
+    RANDOM_BATTLE_GENERATION,
+    RANDOM_BATTLE_TEAM_SIZE,
+)
 from pokeagent.decision._payoff_state import (
     PayoffUnavailable,
     entry_damage,
@@ -31,9 +37,30 @@ class PayoffApproximationWarning(UserWarning):
     """A reminder that the scoring policy is approximate, not a battle simulator."""
 
 
+def _base_species(species: str) -> str:
+    entry = GenData.from_gen(RANDOM_BATTLE_GENERATION).pokedex.get(species, {})
+    return to_id_str(entry.get("baseSpecies", "")) or species
+
+
+def belief_for(species: str, beliefs: BeliefState):
+    """The belief about this Pokemon, also after a form change in battle.
+
+    The parser names a Pokemon by the form it first appeared as (palafin), while poke-env
+    follows form changes (palafinhero after Zero to Hero; also Mimikyu-Busted, Eiscue-Noice,
+    Terapagos, Ogerpon's Tera forms). So fall back to a belief with the same base species.
+    """
+    if species in beliefs:
+        return beliefs[species]
+    base = _base_species(species)
+    for name, belief in beliefs.items():
+        if _base_species(name) == base:
+            return belief
+    return None
+
+
 def _opponent_moves(battle: Battle, beliefs: BeliefState) -> list[tuple[Move, float]]:
     opponent = battle.opponent_active_pokemon
-    belief = beliefs.get(opponent.species)
+    belief = belief_for(opponent.species, beliefs)
     weights = dict(belief.move_probs) if belief else {}
     for weight in weights.values():
         if not math.isfinite(weight) or not 0 <= weight <= 1:
@@ -203,7 +230,7 @@ def _table(battle, beliefs, class_probs, me_key, rows, *, entering, lookahead=Tr
     unseen = max(0, team_size - len(observed))
     if unseen:
         reserves.append((None, unseen))
-    belief = beliefs.get(opp.species)
+    belief = belief_for(opp.species, beliefs)
     probs = _probabilities(moves, bool(reserves), class_probs, bool(belief and belief.move_probs))
     columns = [Action("move", m.id) for m, _ in moves]
     if reserves:
