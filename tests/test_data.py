@@ -147,6 +147,44 @@ def test_download_keeps_the_newest_battles(tmp_path, monkeypatch):
     assert sorted(df["battle_id"]) == [f"gen9randombattle-{i}" for i in (6, 7, 8, 9)]
 
 
+def test_newer_battle_in_a_later_file_beats_cutoff_ties(tmp_path, monkeypatch):
+    """Devam's case on #56: two ties at 100 in part 1, a newer battle at 101 in part 2.
+
+    With room for two, the 101 must be kept; one tie fills the last place, chosen by
+    battle id so the sample does not depend on file order.
+    """
+    import huggingface_hub
+
+    from pokeagent.data import ingest
+
+    def part(name, ids_and_times):
+        rows = []
+        for battle_id, time in ids_and_times:
+            row = make_row(battle_id)
+            row["uploadtime"] = time
+            rows.append(row)
+        path = tmp_path / name
+        pd.DataFrame(rows).to_parquet(path)
+        return path
+
+    sources = {
+        "part1.parquet": part(
+            "part1.parquet", [("gen9randombattle-b", 100), ("gen9randombattle-a", 100)]
+        ),
+        "part2.parquet": part("part2.parquet", [("gen9randombattle-c", 101)]),
+    }
+
+    class LocalFileSystem:  # each remote path opens the local file with the same name
+        def open(self, path, mode):
+            return open(sources[path.rsplit("/", 1)[-1]], mode)
+
+    monkeypatch.setattr(huggingface_hub, "HfFileSystem", LocalFileSystem)
+    monkeypatch.setattr(ingest, "list_source_files", lambda revision: list(sources))
+
+    df = ingest.load_battles(ingest.download_replays(tmp_path / "raw.parquet", max_battles=2))
+    assert sorted(df["battle_id"]) == ["gen9randombattle-a", "gen9randombattle-c"]
+
+
 def test_only_standard_gen9_files_are_listed(monkeypatch):
     import huggingface_hub
 
@@ -352,6 +390,37 @@ def test_build_runs_end_to_end_on_fake_battles(tmp_path, monkeypatch, capsys):
     splits = load_splits(paths["SPLITS_PATH"])
     assert sum(len(ids) for ids in splits.values()) == counts[-1]
     assert "Ash" not in paths["SUMMARY_PATH"].read_text()  # no player names in the summary
+
+
+def test_build_refuses_before_touching_files_when_a_split_exists(tmp_path, monkeypatch):
+    """Devam's case on #58: a refused rebuild must leave the frozen split's files intact."""
+    import sys
+
+    import pytest
+
+    from pokeagent.data import build
+    from pokeagent.data.ingest import battles_from_rows
+
+    raw_path, battles_path = tmp_path / "raw.parquet", tmp_path / "battles.parquet"
+    splits_path = tmp_path / "splits.json"
+    battles_from_rows([make_row("gen9randombattle-replacement")]).to_parquet(raw_path)
+    battles_from_rows([make_row("gen9randombattle-old")]).to_parquet(battles_path)
+    splits_path.write_text(json.dumps({"train": ["gen9randombattle-old"], "val": [], "test": []}))
+    before = (battles_path.read_bytes(), splits_path.read_text())
+
+    paths = {
+        "RAW_BATTLES_PATH": raw_path,
+        "BATTLES_PATH": battles_path,
+        "SPLITS_PATH": splits_path,
+        "SUMMARY_PATH": tmp_path / "summary.json",
+    }
+    for name, value in paths.items():
+        monkeypatch.setattr(build, name, value)
+    monkeypatch.setattr(sys, "argv", ["build", "--skip-download"])
+    with pytest.raises(FileExistsError):
+        build.main()
+    assert (battles_path.read_bytes(), splits_path.read_text()) == before
+    assert not paths["SUMMARY_PATH"].exists()
 
 
 def test_report_figures_are_drawn_from_the_summary(tmp_path):

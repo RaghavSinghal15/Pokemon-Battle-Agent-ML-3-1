@@ -22,6 +22,51 @@ Write a separate local JSONL archive with one outcome and public log per fresh b
 **Why.** Showdown's spectator channel already hides the private player view. Reading rooms
 as they finish keeps early replays available in long tournaments. The summary is saved only
 after checking that each completed game has a public log with an ending.
+## 2026-11-20: Newest-sample ties filled by battle id; rebuild refuses first (B, #64, Raghav with Claude)
+**Decision:** when `--max-battles` cuts through battles uploaded in the same second, every
+battle strictly newer than that second is kept, and the remaining places go to the tied
+battles in battle-id order. The build checks for an existing `splits.json` before it downloads
+or filters anything.
+**Alternatives:** keep ties in file order (what B2 did); keep all ties and exceed the limit;
+check the split only when saving it (what B4 did).
+**Why:** Devam's reviews of #56 and #58 reproduced both bugs. File order could drop a newer
+battle for an older tie, so the sample depended on how Hugging Face happened to store the
+rows. Battle-id order is deterministic and independent of storage. Exceeding the limit would
+make `--max-battles` mean something different from what it says. Checking the split last let a
+refused run replace the files the frozen split refers to.
+## 2026-11-22: Action-class labels follow the move's category, in one shared rule (E1 #14, Raghav with Claude)
+**Decision:** a switch is "switch"; a move is "attack" if its official category is Physical or
+Special and "non_damaging" if it is Status (Showdown's Gen 9 move data, via poke-env). The rule is
+written once, in `models/labels.py`, and used by the label column of the feature table, the
+"opponent's last action" feature and the payoff table's grouping of the opponent's moves.
+**Alternatives:** hand-written exceptions, e.g. counting Status moves that switch the user out
+(Parting Shot, Shed Tail, Teleport, Chilly Reception) as switches, or labelling Sleep Talk by the
+move it calls; keeping separate copies of the rule in each module.
+**Why:** the label answers "what type of choice did the player make", not "how good was it";
+valuing moves is the payoff table's job (#66 to #69, value model #71 to #74). Exceptions are
+rare: on the 765,596 decision points, the four status pivots are 1,806 turns (0.24%) and Sleep
+Talk 276. U-turn (11,435), Volt Switch (4,959) and Flip Turn (4,064) are attacks either way:
+the player chose a damaging move. Every recorded move has a category, so no turn is dropped.
+One shared rule means the model can never predict one grouping while the payoff table reads
+another; a test checks the feature code against it, and recomputing all 765,596 labels with it
+reproduces the existing feature table exactly.
+
+## 2026-11-20: Forced replacements chosen by next-turn matchup (F7 #61, Raghav with Claude)
+**Decision:** after a faint or a forced switch, build next turn's payoff table as if each
+reserve were in battle (its own moves against the opponent's likely moves, with hazard damage
+on entry) and send in the reserve whose table scores best: the best expected row for best
+response, the game value for minimax. The forecast is flat 1/3 in both modes. HP decides only
+ties, and the healthiest reserve is still the fallback when no table can be built (both active
+Pokemon fainted at once, so the opponent's next Pokemon is unknown).
+**Alternatives:** keep "most HP"; a hand-written type-chart score; query the opponent model
+on hypothetical states.
+**Why:** about 19% of decisions are forced replacements, and "most HP" sends in Pokemon that
+the opponent hits super effectively. Reusing the payoff table brings in type matchups,
+abilities, items, Speed and Stealth Rock's type scaling with no new scoring rules to defend.
+The opponent model was trained on states with our real active Pokemon, so asking it about
+hypothetical replacements would be outside its training data. In 200 development games per
+strategy against `SimpleHeuristicsPlayer`, best response went from 93 to 122 wins and
+minimax from 60 to 72.
 
 ## 2026-11-13: Minimax probabilities and repeatable sampling (F1, Devam)
 **Decision:** maximise the worst-case expected payoff with `scipy.optimize.linprog`, then

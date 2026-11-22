@@ -17,7 +17,11 @@ python -m pokeagent.data.report                       # redraw the figures
 - **Scope:** the standard Gen 9 Random Battle files (`[Gen 9] RANDOMBATTLE_part1` to `_part11`),
   rows whose `formatid` is exactly `gen9randombattle`. That is **2,012,698 battles** in total.
   The separate Blitz file (a faster-timer variant) is left out.
-- **Run:** 18 November 2026, on a laptop, code from branch `b/b4-splits`.
+- **Run:** 18 November 2026, on a laptop, with
+  `python -m pokeagent.data.build --max-battles 50000` at commit `ef912a8` (the head of
+  `b/b4-splits`), using `config.RATING_KEEP_FRACTION = 0.35`, `config.MIN_TURNS = 2` and the
+  dataset revision above. Rebuilt on 20 November 2026 from `main`, whose data code is identical
+  to `ef912a8`: every count below came out the same.
 
 ## What we downloaded
 
@@ -50,12 +54,14 @@ in the dataset check, the first 2,000 rows of part 1 all came from 18 to 20 July
 
 ![Player ratings in usable games](figures/data_ratings.png)
 
-**How it was chosen.** The rule, fixed before looking at the data, is: keep the top 35% of
-usable, rated games, ranking each game by its *lower*-rated player (`config.RATING_KEEP_FRACTION`).
+**How it was chosen.** The rule, fixed before looking at the data, is: aim to keep the top 35%
+of usable, rated games, ranking each game by its *lower*-rated player (`config.RATING_KEEP_FRACTION`).
 "Both players rated at least X" is the same as "the weaker player is rated at least X", so the
 cut-off is the 65th percentile of the weaker player's rating. On this data that is **1,893**.
-The kept share is 32.5% of usable games rather than 35% because games with an unrated player
-(7%) are dropped before the percentile is taken.
+35% is a target, not an exact share: the percentile is rounded down and every game tied at the
+cut-off is kept, so among rated games the kept share can come out slightly above 35%. The kept
+share is 32.5% of all usable games because games with an unrated player (7%) are dropped before
+the percentile is taken.
 
 **What the distribution shows.** Ratings fall into two groups: a large group of casual players
 near the 1,000 starting rating, and a second peak of strong players from about 1,900 upwards.
@@ -74,8 +80,11 @@ Kept games last a median of **25 turns** (10th percentile 14, 90th percentile 41
 longer than all downloaded games (median 22), possibly because strong players forfeit less
 often. The last bar collects the 37 games of 100 turns or more.
 
-**Sanity check.** Player 1 wins 48.5% of kept games, close to 50%, so neither side of the log
-is favoured in a way that could leak into features.
+**Class balance.** Player 1 wins 48.5% of kept games, close to 50%. This is a descriptive check
+of the winner label only. It says nothing about leakage, and it does not show that the two
+sides of the log reveal the same information; those are checked separately, by the parser's
+public-state tests and the leakage checklist in
+[docs/04-architecture.md](../docs/04-architecture.md).
 
 ## Train / validation / test split
 

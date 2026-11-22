@@ -13,15 +13,17 @@ from pokeagent.agent._inputs import public_beliefs
 from pokeagent.agent.explain import format_turn
 from pokeagent.beliefs.tracker import prior_belief
 from pokeagent.config import RANDOM_BATTLE_SETS_PATH, SEED
+from pokeagent.decision._validation import action_label
 from pokeagent.decision.damage import estimate_move_damage
 from pokeagent.decision.payoff import (
     PayoffApproximationWarning,
     PayoffUnavailable,
     build_payoff_table,
+    replacement_tables,
 )
 from pokeagent.decision.strategies import best_response, minimax_lp
 from pokeagent.features.build import build_features
-from pokeagent.interfaces import ACTION_CLASSES, Action, BeliefState, Decision
+from pokeagent.interfaces import ACTION_CLASSES, Action, BeliefState, Decision, PayoffTable
 from pokeagent.parser.live import state_from_battle
 
 if TYPE_CHECKING:
@@ -88,7 +90,7 @@ class ExplainableAgent(Player):
         raise ValueError(f"Decision is not currently legal: {action}")
 
     def _fallback(self, battle: Battle, reason: str) -> BattleOrder:
-        """Prefer estimated immediate damage; forced switches prefer remaining HP."""
+        """Prefer estimated immediate damage; unscorable forced switches prefer remaining HP."""
         self.fallback_reasons[reason] += 1
         if battle.available_moves and not battle.force_switch:
             estimates = estimate_move_damage(battle)
@@ -139,12 +141,57 @@ class ExplainableAgent(Player):
         self._emit(text)
         return order
 
+    def _table_score(self, table: PayoffTable) -> float:
+        """How good a table is for us under our own strategy.
+
+        Best response: the expected payoff of its best row. Minimax: the game value, our
+        guaranteed expected payoff when the opponent answers our mix as badly as possible.
+        """
+        values = np.asarray(table.values, dtype=float)
+        if self.strategy == "best_response":
+            return float(np.max(values @ np.asarray(table.opp_probs, dtype=float)))
+        decision = minimax_lp(table, rng=self.rng)
+        mix = np.array(
+            [decision.mixed_strategy.get(action_label(a), 0.0) for a in table.our_actions]
+        )
+        return float(np.min(mix @ values))
+
+    def _choose_replacement(self, battle: Battle) -> BattleOrder:
+        """Send in the reserve whose next-turn table scores best; HP decides only ties.
+
+        The forecast is flat in both modes: the opponent model was trained on states with
+        our real active Pokemon, not on hypothetical replacements.
+        """
+        beliefs = flat_beliefs(battle)
+        flat = dict.fromkeys(ACTION_CLASSES, 1 / len(ACTION_CLASSES))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", PayoffApproximationWarning)
+            tables = replacement_tables(battle, beliefs, flat)
+        hp = {mon.species: mon.current_hp_fraction for mon in battle.available_switches}
+        scores = {species: self._table_score(table) for species, table in tables.items()}
+        ranked = sorted(scores, key=lambda species: (scores[species], hp[species]), reverse=True)
+        summary = ", ".join(f"{species} {scores[species]:+.3f}" for species in ranked)
+        decision = Decision(
+            Action("switch", ranked[0]),
+            self.strategy,
+            explanation=(
+                f"Forced replacement by matchup: {ranked[0]} scores best next turn ({summary})."
+            ),
+        )
+        return self._record(battle, decision)
+
     def choose_move(self, battle: AbstractBattle) -> BattleOrder:
         """Choose from the table, or record why a legal fallback was needed."""
         if not isinstance(battle, Battle) or battle.gen != 9:
             raise ValueError("ExplainableAgent supports Gen 9 singles only")
         if battle.force_switch:
-            return self._fallback(battle, "forced replacement, outside the simultaneous table")
+            try:
+                return self._choose_replacement(battle)
+            except (PayoffUnavailable, ValueError, RuntimeError) as error:
+                return self._fallback(
+                    battle,
+                    f"forced replacement could not be scored: {type(error).__name__}: {error}",
+                )
         try:
             state = None
             if self.mode == "model":
