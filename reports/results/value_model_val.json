@@ -1,0 +1,147 @@
+{
+  "split": "val",
+  "base_rate": 0.5153626640766339,
+  "chosen": "lightgbm",
+  "results": {
+    "team_hp": {
+      "rows": 117018,
+      "log_loss": 0.6257863542601028,
+      "brier": 0.21840332217551045,
+      "accuracy": 0.6391837153258473,
+      "auc": 0.700736115487206,
+      "ece": 0.008286847849662549,
+      "mirror_gap": 0.02841066119252814
+    },
+    "logistic_regression": {
+      "rows": 117018,
+      "log_loss": 0.5897643996691829,
+      "brier": 0.20370507831721707,
+      "accuracy": 0.6660513767112752,
+      "auc": 0.7429093916750021,
+      "ece": 0.011819254932702365,
+      "mirror_gap": 0.030301032640765228
+    },
+    "lightgbm": {
+      "rows": 117018,
+      "log_loss": 0.5811740959789738,
+      "brier": 0.20060936773702162,
+      "accuracy": 0.6709736963544071,
+      "auc": 0.7503466126748375,
+      "ece": 0.010307814947695127,
+      "mirror_gap": 0.03027289145625335
+    }
+  },
+  "searches": {
+    "logistic_regression": [
+      {
+        "C": 0.01,
+        "val_log_loss": 0.5897761024907944
+      },
+      {
+        "C": 0.1,
+        "val_log_loss": 0.5897652086891727
+      },
+      {
+        "C": 1.0,
+        "val_log_loss": 0.589764470087482
+      },
+      {
+        "C": 10.0,
+        "val_log_loss": 0.5897643996691829
+      }
+    ],
+    "lightgbm": [
+      {
+        "leaves": 15,
+        "trees": 446,
+        "val_log_loss": 0.5811740959789738
+      },
+      {
+        "leaves": 63,
+        "trees": 230,
+        "val_log_loss": 0.5821472754600583
+      },
+      {
+        "leaves": 255,
+        "trees": 137,
+        "val_log_loss": 0.5838909694420635
+      }
+    ]
+  },
+  "lightgbm_gain_share": {
+    "my_team_hp": 0.268137814954726,
+    "opp_team_hp": 0.2542835016432075,
+    "opp_remaining": 0.09532495102598636,
+    "my_remaining": 0.09189368346505415,
+    "my_boost_sum": 0.0374400019439632,
+    "opp_boost_sum": 0.03072669155931436,
+    "my_tera_used": 0.025069444027277683,
+    "opp_hazard_layers": 0.02482349483241103,
+    "opp_tera_used": 0.02394576888821963,
+    "my_hazard_layers": 0.023409129488471687,
+    "opp_statused": 0.016883011820981352,
+    "my_statused": 0.01638639706962492,
+    "my_unrevealed": 0.012715819157342899,
+    "turn": 0.009670664417592291,
+    "opp_expected_status_moves": 0.009190768351410488,
+    "my_type_matchup": 0.007625531349444484,
+    "opp_hp": 0.005395001590630408,
+    "opp_type_matchup": 0.004765606157067637,
+    "opp_unrevealed": 0.0045845764633761455,
+    "my_faster_than": 0.004132565408261563,
+    "opp_best_recovery_move_probability": 0.003607594339775676,
+    "my_hp": 0.0036027806807180074,
+    "my_revealed_moves": 0.0029976086562954266,
+    "opp_revealed_moves": 0.002945196676755204,
+    "opp_faster_than": 0.002830576988263441,
+    "speed_advantage": 0.002738675208912339,
+    "opp_best_setup_move_probability": 0.002125899308241604,
+    "opp_protect_probability": 0.002106625802163103,
+    "opp_paralyzed": 0.0012869180031066195,
+    "opp_substitute_probability": 0.0012432920475758157,
+    "opp_status": 0.001105398385883167,
+    "opp_pivot_move_probability": 0.001076756628247385,
+    "my_super_effective": 0.0008776298283055577,
+    "opp_last_attack": 0.0008071091208963919,
+    "opp_super_effective": 0.0007912133743421459,
+    "opp_hazard_move_useful": 0.0007693385608853402,
+    "my_status": 0.0006812883962268844,
+    "my_paralyzed": 0.0006504482323300996,
+    "opp_last_non_damaging": 0.0006141261243882197,
+    "opp_status_move_useful": 0.0004001469211905867,
+    "opp_choice_item_known": 0.00020480543472950613,
+    "opp_last_switch": 6.111920307210183e-05,
+    "opp_hazard_removal_useful": 5.062261268606089e-05,
+    "trick_room": 2.0405850645505388e-05
+  },
+  "by_turn": [
+    {
+      "turns": "1-5",
+      "rows": 22687,
+      "team_hp": 0.696531286124878,
+      "logistic_regression": 0.6929682344204882,
+      "lightgbm": 0.6864017552327477
+    },
+    {
+      "turns": "6-15",
+      "rows": 41364,
+      "team_hp": 0.6526208406089977,
+      "logistic_regression": 0.6259121661973364,
+      "lightgbm": 0.6156711547899814
+    },
+    {
+      "turns": "16-30",
+      "rows": 38669,
+      "team_hp": 0.5804038554914045,
+      "logistic_regression": 0.5305167785882727,
+      "lightgbm": 0.5201659857966717
+    },
+    {
+      "turns": "31+",
+      "rows": 14298,
+      "team_hp": 0.5586387729434812,
+      "logistic_regression": 0.48166848736706486,
+      "lightgbm": 0.4794036642046394
+    }
+  ]
+}

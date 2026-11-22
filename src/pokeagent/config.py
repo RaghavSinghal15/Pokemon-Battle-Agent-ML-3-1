@@ -22,10 +22,13 @@ FEATURES_PATH = PROCESSED_DIR / "features.parquet"
 # label bias in the opponent model (E4), never as labelled examples.
 HIDDEN_POINTS_PATH = PROCESSED_DIR / "hidden_points.parquet"
 HIDDEN_FEATURES_PATH = PROCESSED_DIR / "hidden_features.parquet"
+# Value model (V1): one row per decision point, labelled with whether that player won.
+VALUE_FEATURES_PATH = PROCESSED_DIR / "value_features.parquet"
 
 # Trained models and other large outputs (git-ignored).
 ARTIFACTS_DIR = REPO_ROOT / "artifacts"
 OPPONENT_MODEL_PATH = ARTIFACTS_DIR / "opponent_model.pkl"  # the model the agent loads
+VALUE_MODEL_PATH = ARTIFACTS_DIR / "value_model.pkl"  # P(win) from a position (V2)
 
 # Small results that ARE committed: figures, result tables, the report.
 REPORTS_DIR = REPO_ROOT / "reports"
@@ -34,6 +37,10 @@ BASELINE_RESULTS_DIR = REPORTS_DIR / "results" / "baselines"
 BASELINE_REPORT_PATH = REPORTS_DIR / "results" / "baselines.md"
 AGENT_V0_RESULTS_DIR = REPORTS_DIR / "results" / "agent-v0"
 AGENT_PIPELINE_RESULTS_DIR = REPORTS_DIR / "results" / "agent-pipeline-smoke"
+# Public ladder games (A8). Per-game logs name other players, so they stay in data/
+# (git-ignored); only the summary with no usernames goes to reports/.
+LADDER_GAMES_DIR = INTERIM_DIR / "ladder"
+LADDER_RESULTS_DIR = REPORTS_DIR / "results" / "ladder"
 
 # The Showdown format we play. "gen9randombattle" = Generation 9, singles, random teams.
 BATTLE_FORMAT = "gen9randombattle"

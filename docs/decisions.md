@@ -15,6 +15,102 @@ Template:
 
 ---
 
+## 2026-11-22: Puzzle positions with their own forecast, and the healing moves they exposed (V3 #73, Raghav with Claude)
+**Decision:** twelve hand-built positions in `eval/puzzles.py`, each with the accepted answer(s)
+and the forecast a strong player would expect (Blissey uses Seismic Toss 70% of the time, not a
+third). `scripts/run_puzzles.py` reports best response with the puzzle's forecast and with a
+flat 1/3 forecast, and how much probability minimax puts on accepted answers. The puzzles also
+exposed a bug: Moonlight, Morning Sun, Synthesis, Shore Up, Rest and Strength Sap healed 0,
+because the move data gives no fixed amount (it depends on the weather or the target). They now
+heal 1/2 (2/3 in sun, 1/4 in other weather), Shore Up 2/3 in sand, Rest fully plus sleep, and
+Strength Sap the target's Attack.
+**Alternatives:** puzzles with a flat forecast only; puzzles in the opponent model's hands; a
+larger set generated from replays (no agreed answers).
+**Why:** with a flat forecast the agent "failed" puzzles because the forecast was absurd, not
+because it chose badly. Fixing the forecast per puzzle tests the payoff table alone. Result:
+11/12 (flat forecast 9/12); minimax puts 82% of its probability on accepted answers. The miss is
+Stealth Rock on turn 1 against Blissey: Earthquake's chip (+0.18) beats the hazard (+0.10)
+because Blissey's healing is not counted against our damage and the hazard weight is 0.5. This
+is a known open question for the value model (#74). Minimax spreads its probability when the
+opponent might switch (24% on the obvious knockout), because an attack into an unseen switch-in
+gets no credit: a known approximation that makes minimax cautious.
+
+## 2026-11-22: Value lasting effects by their change to next turn's table (F8 #66, F9 #67, F10 #68, Raghav with Claude)
+**Decision:** a move that leaves something behind is worth what it changes later. Stat changes
+(Swords Dance, Draco Meteor's drop, Icy Wind) and statuses (Thunder Wave, Will-O-Wisp, Toxic,
+Spore, with type and known-ability immunities) are valued as the change in next turn's table
+value, computed one turn ahead from the current HP, times `PAYOFF_EFFECT_TURNS` (1.0). Entry
+hazards and their removal are valued as the change in entry damage summed over every Pokemon
+still to switch in (unseen opponents count as neutral), times `PAYOFF_HAZARD_WEIGHT` (0.5). An
+effect counts only if the move lands, and a boost only if the user survives the turn (a status
+only if the target survives). With both weights at 0 the lookahead is skipped.
+**Alternatives:** hand-set bonuses per move ("Swords Dance = +0.2"); a deeper search; leaving it
+to the value model (#74).
+**Why:** the one-turn table gave setup, status and hazard moves no value, so the agent never
+used them (the bottleneck in the entry below). Measuring through next turn's table uses the
+same damage and speed model as everything else, so +2 Attack is worth more when it turns 2HKOs
+into OHKOs, and nothing when we are about to be knocked out. Hazards need their own sum, because
+one turn ahead sees only the active Pokemon (the lookahead gave Stealth Rock only +0.01). Best
+response, LightGBM forecast (36 features), 1,000 games each against SimpleHeuristicsPlayer: same
+code with effects off 606 (57.5% to 63.6%); effects on 670 (64.0% to 69.8%), +6.4 points,
+z = 2.98, p = 0.003. For reference, before this change the agent won 641 (61.1% to 67.0%). In 60
+logged games the agent now uses Swords Dance, Nasty Plot and Shell Smash. Thunder Wave is now
+scored correctly (+0.11 against a fast attacker) but still below a strong attack. Cost: each
+decision is about 2.4 times slower (about 0.15 s), fine for live play.
+## 2026-11-22: Value model: LightGBM on the position table (V2 #72, Raghav with Claude)
+**Decision:** predict P(win) for the player to move with LightGBM (15 leaves, 446 trees by early
+stopping), chosen on validation log loss over logistic regression and a one-feature baseline
+(team HP lead only). Saved to `artifacts/value_model.pkl`.
+**Alternatives:** logistic regression on all 44 features; bigger trees (63 or 255 leaves); the
+team HP lead alone.
+**Why:** validation (117,018 rows, test untouched):
+
+| Model | Log loss | Brier | Accuracy | AUC | Calibration error |
+|---|---|---|---|---|---|
+| coin flip | 0.693 | 0.250 | | | |
+| team HP lead only | 0.626 | 0.218 | 63.9% | 0.701 | 0.008 |
+| logistic regression | 0.590 | 0.204 | 66.6% | 0.743 | 0.012 |
+| LightGBM, 15 leaves | 0.581 | 0.201 | 67.1% | 0.750 | 0.010 |
+
+Bigger trees overfit slightly (0.582, 0.584), and the C setting barely matters for logistic
+regression (0.58976 to 0.58978). The first five turns stay near a coin flip (0.686), as expected
+with random teams nobody has seen yet. By turn 31+ log loss is 0.479. Team HP and Pokemon
+remaining carry 71% of the gain. The two players' predictions for the same turn add up to 1
+within 0.03 on average, so the model treats the game as symmetric without being forced to.
+The baseline's coefficient says +1 Pokemon of team HP lead moves P(win) from 52% to 72% at an
+even position, a useful scale for the payoff's KO bonus.
+
+## 2026-11-22: The value model's training table (V1 #71, Raghav with Claude)
+**Decision:** one row per decision point, with features from that player's own side and the
+label "did this player win". The features are the 36 opponent-model features plus eight
+whole-team ones: total HP, status count, how many of their Pokemon our active one outspeeds,
+and how many it hits super effectively (and the same for them). Both players' rows of a turn are
+kept. Ladder ratings are excluded.
+**Alternatives:** one row per turn from p1's side only; damage-calculator features such as "how
+many of theirs can we knock out in one hit"; ratings as features.
+**Why:** both sides' rows double the data and teach the model that the game is symmetric.
+Splits are by battle, so the two mirrored rows never cross splits. Type and speed counts are
+cheap (2 minutes for 765,596 rows) and need no guess about unknown sets. Damage-calculator
+counts can come later if the model needs them. Ratings describe the players rather than the
+position, and the agent does not reliably see them in a live game. A quick check on train shows
+the signal: win rate rises from 11% when 2+ Pokemon behind on team HP to 92% when 2+ ahead.
+Rows are 51.6% wins rather than 50%, because players who end up winning have slightly more
+non-forced decision points.
+## 2026-11-22: How we test on the public ladder (A8 #82, Raghav with Claude)
+**Decision:** `scripts/play_ladder.py` plays one game at a time on the official
+gen9randombattle ladder from a dedicated bot account whose name and password are environment
+variables on Raghav's laptop. We record each game's result and Elo before and after (read from
+the server's rating line, because poke-env keeps only the "before" number), and save replays
+and explanation logs in `data/` (git-ignored, since they name other players). Only a summary with
+no usernames (wins, Wilson interval, rating path, mean opponent rating) goes to `reports/`.
+`--local` rehearses the same loop on the local server against the heuristics bot.
+**Alternatives:** only bot-vs-bot games on the local server; several games at once; committing
+per-game logs.
+**Why:** people are the target the opponent model was trained on, so the ladder is the real
+test; the heuristics bot stays the fast, repeatable yardstick during development. One game at a
+time keeps us a good citizen on the public server. A 2-game local rehearsal recorded 1000 ->
+1045 -> 1034 correctly.
+
 ## 2026-11-22: Seven belief-based features for non-damaging threats (D7 #90, Raghav with Claude)
 **Decision:** add seven features computed from the beliefs about the acting player's moves: the
 expected number of Status moves in its set; the most likely status-inflicting move that could
