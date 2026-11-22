@@ -55,6 +55,7 @@ class ExplainableAgent(Player):
         explanation_stream: TextIO | None = None,
         utility: Literal["hp", "value"] = "hp",
         value_model=None,
+        belief_updates: bool = True,
         **kwargs,
     ):
         if strategy not in ("best_response", "lp"):
@@ -72,6 +73,8 @@ class ExplainableAgent(Player):
         self.mode, self.opponent_model = mode, opponent_model
         # V4: score cells by change in predicted P(win) (value) or HP traded plus a KO bonus (hp).
         self.utility, self.value_model = utility, value_model
+        # Ablation (A6): False keeps every opponent belief at its Random Battle prior.
+        self.belief_updates = belief_updates
         self.explanation_stream = explanation_stream
         self.last_explanation = ""
         self.decision_counts = Counter()
@@ -194,7 +197,10 @@ class ExplainableAgent(Player):
             state = None
             if self.mode == "model":
                 state = state_from_battle(battle)
-                beliefs = beliefs_for(state)
+                if self.belief_updates:
+                    beliefs = beliefs_for(state)
+                else:
+                    beliefs = {p.species: prior_belief(p.species) for p in state.opp.pokemon}
                 forecast = self.opponent_model.predict_proba(build_features(state, beliefs))
             else:
                 beliefs = flat_beliefs(battle)
