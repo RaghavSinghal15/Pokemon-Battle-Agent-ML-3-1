@@ -5,7 +5,8 @@ The account name and password come from environment variables, never from the re
     SHOWDOWN_PASSWORD   its password
 
 Usage:
-    python scripts/play_ladder.py --games 20 --mode model
+    python scripts/play_ladder.py --games 20                    # model forecast, value utility
+    python scripts/play_ladder.py --games 20 --utility hp       # the older HP-traded scoring
     python scripts/play_ladder.py --games 2 --local     # rehearsal on the local server
 
 Games are played one at a time. Per-game records, the explanation log and HTML replays go to
@@ -30,23 +31,31 @@ from pokeagent.config import (
     LADDER_GAMES_DIR,
     LADDER_RESULTS_DIR,
     OPPONENT_MODEL_PATH,
+    VALUE_UTILITY_MODEL_PATH,
 )
 from pokeagent.eval.baselines import BASELINES
 from pokeagent.eval.ladder import LadderAgent, game_record, summarise
 from pokeagent.eval.tournament import source_revision
 
 
-def agent_options(mode: str) -> dict:
-    if mode == "flat":
-        return {"mode": "flat"}
-    if not OPPONENT_MODEL_PATH.is_file():
-        sys.exit(f"No trained opponent model at {OPPONENT_MODEL_PATH}; run pokeagent.models.train")
-    with OPPONENT_MODEL_PATH.open("rb") as stream:
-        return {"mode": "model", "opponent_model": pickle.load(stream)}
+def agent_options(mode: str, utility: str) -> dict:
+    options = {"mode": "flat"}
+    if mode == "model":
+        if not OPPONENT_MODEL_PATH.is_file():
+            sys.exit(f"No opponent model at {OPPONENT_MODEL_PATH}; run pokeagent.models.train")
+        with OPPONENT_MODEL_PATH.open("rb") as stream:
+            options = {"mode": "model", "opponent_model": pickle.load(stream)}
+    if utility == "value":
+        if not VALUE_UTILITY_MODEL_PATH.is_file():
+            sys.exit(f"No value model at {VALUE_UTILITY_MODEL_PATH}; run models.train_value")
+        with VALUE_UTILITY_MODEL_PATH.open("rb") as stream:
+            options.update(utility="value", value_model=pickle.load(stream))
+    return options
 
 
-async def main(games: int, strategy: str, mode: str, local: bool) -> None:
-    run = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S") + f"-{mode}-{strategy}"
+async def main(games: int, strategy: str, mode: str, utility: str, local: bool) -> None:
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    run = f"{stamp}-{mode}-{utility}-{strategy}"
     folder = LADDER_GAMES_DIR / run
     folder.mkdir(parents=True, exist_ok=True)
     options = {
@@ -54,7 +63,7 @@ async def main(games: int, strategy: str, mode: str, local: bool) -> None:
         "max_concurrent_battles": 1,  # one game at a time on the public ladder
         "save_replays": str(folder / "replays"),
         "strategy": strategy,
-        **agent_options(mode),
+        **agent_options(mode, utility),
     }
     if local:
         # Rehearsal: two local accounts search the local ladder together (no passwords).
@@ -103,6 +112,7 @@ async def main(games: int, strategy: str, mode: str, local: bool) -> None:
         "format": BATTLE_FORMAT,
         "mode": mode,
         "strategy": strategy,
+        "utility": utility,
         "source": source_revision(),
         "minutes": round((time.time() - start) / 60, 1),
         "decisions": dict(agent.decision_counts),
@@ -123,6 +133,7 @@ if __name__ == "__main__":
     parser.add_argument("--games", type=int, default=10)
     parser.add_argument("--strategy", choices=("best_response", "lp"), default="best_response")
     parser.add_argument("--mode", choices=("flat", "model"), default="model")
+    parser.add_argument("--utility", choices=("value", "hp"), default="value")
     parser.add_argument("--local", action="store_true", help="rehearse on localhost:8000")
     args = parser.parse_args()
-    asyncio.run(main(args.games, args.strategy, args.mode, args.local))
+    asyncio.run(main(args.games, args.strategy, args.mode, args.utility, args.local))

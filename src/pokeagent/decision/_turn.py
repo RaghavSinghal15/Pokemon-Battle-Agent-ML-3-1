@@ -79,12 +79,19 @@ def turn_value(
     ko_bonus: float = PAYOFF_KO_BONUS,
     residuals: tuple[float, float] = (0.0, 0.0),
     substitutes: tuple[float, float] = (0.0, 0.0),
+    end_value=None,
+    start_value: float | None = None,
 ) -> float:
     """Average utility after HP capping, KO cancellation and hit/miss/order branches.
 
     Entry losses happen first. residuals are each side's end-of-turn HP change (Leftovers
     +1/16, burn -1/16 ...), applied to a Pokemon still standing. substitutes are the HP left in
     each side's existing Substitute. This scoring approximation is not a battle simulator.
+
+    end_value (V4): a function (our HP, their HP at the end of the turn) -> P(win). If given, an
+    outcome is worth end_value(end) - start_value instead of HP traded plus the KO bonus.
+    start_value is P(win) now; every row of a table must share it, so pass it explicitly when
+    rows face different Pokemon (switches). It defaults to end_value at the starting HP.
     """
     numbers = (our_hp, opp_hp, our_first, *entry_losses, ko_bonus, *residuals, *substitutes)
     if not all(math.isfinite(x) for x in numbers):
@@ -94,6 +101,8 @@ def turn_value(
     if min(*entry_losses, ko_bonus, *substitutes) < 0:
         raise ValueError("Entry damage, KO bonus and Substitute HP must be non-negative")
     value = 0.0
+    if end_value is not None and start_value is None:
+        start_value = end_value(our_hp, opp_hp)
     for first, order_probability in ((0, our_first), (1, 1 - our_first)):
         for our_outcome, opp_outcome in product(ours.outcomes(), theirs.outcomes()):
             chance = order_probability * our_outcome[0] * opp_outcome[0]
@@ -151,8 +160,11 @@ def turn_value(
                     taken = min(hp[side], -residuals[side])
                     hp[side] -= taken
                     lost[side] += taken
-            utility = lost[1] - lost[0] + recovered[0] - recovered[1]
-            utility += ko_bonus * (int(hp[1] <= 0) - int(hp[0] <= 0))
+            if end_value is not None:
+                utility = end_value(hp[0], hp[1]) - start_value
+            else:
+                utility = lost[1] - lost[0] + recovered[0] - recovered[1]
+                utility += ko_bonus * (int(hp[1] <= 0) - int(hp[0] <= 0))
             for actor, effect in ((0, ours), (1, theirs)):
                 if not landed[actor] or effect.future == 0:
                     continue

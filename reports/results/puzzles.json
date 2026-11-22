@@ -1,6 +1,7 @@
 {
   "solved": 11,
   "flat_solved": 9,
+  "value_solved": 11,
   "puzzles": [
     {
       "puzzle": "take_the_ko",
@@ -18,6 +19,14 @@
         "dragonclaw": -0.1125292779227732,
         "stoneedge": -0.07282339556983199,
         "swordsdance": -0.23164692498159672
+      },
+      "value_best_response": "earthquake",
+      "value_solved": true,
+      "value_expected": {
+        "earthquake": 0.07071067687633284,
+        "dragonclaw": -0.025496130352515786,
+        "stoneedge": -0.018439614895197912,
+        "swordsdance": -0.04820113258458998
       }
     },
     {
@@ -36,6 +45,14 @@
         "dragonclaw": -0.17800308977143445,
         "stoneedge": -0.22233074128658595,
         "swordsdance": 0.3718500168062881
+      },
+      "value_best_response": "earthquake",
+      "value_solved": true,
+      "value_expected": {
+        "earthquake": 0.08508265905899633,
+        "dragonclaw": -0.03897715579280372,
+        "stoneedge": -0.04868467062160408,
+        "swordsdance": 0.061214246626713216
       }
     },
     {
@@ -52,10 +69,18 @@
       "flat_solved": true,
       "lp_accepted_mass": 1.0,
       "expected": {
-        "earthquake": -0.17400455062571105,
-        "dragonclaw": -0.07790285571045678,
-        "firefang": 0.024368330730221124,
-        "swordsdance": 0.03539799174717025
+        "earthquake": -0.14411810994774493,
+        "dragonclaw": -0.04801641503249069,
+        "firefang": 0.05425477140818723,
+        "swordsdance": 0.0652844324251363
+      },
+      "value_best_response": "swordsdance",
+      "value_solved": true,
+      "value_expected": {
+        "earthquake": -0.03145946728366434,
+        "dragonclaw": -0.010252090720290694,
+        "firefang": 0.012522089456576698,
+        "swordsdance": 0.014938361580730352
       }
     },
     {
@@ -74,6 +99,14 @@
         "voltswitch": -0.5540305010893246,
         "shadowball": -0.34604013770847736,
         "calmmind": -0.4806221375431432
+      },
+      "value_best_response": "shadowball",
+      "value_solved": true,
+      "value_expected": {
+        "thunderbolt": -0.12124787962952209,
+        "voltswitch": -0.12124787962952209,
+        "shadowball": -0.07700495628114556,
+        "calmmind": -0.10542870626271669
       }
     },
     {
@@ -93,6 +126,15 @@
         "stoneedge": -0.2163343443136976,
         "swordsdance": -0.3674232729796957,
         "corviknight": -0.19904180790960452
+      },
+      "value_best_response": "corviknight",
+      "value_solved": true,
+      "value_expected": {
+        "earthquake": -0.034668245050030716,
+        "dragonclaw": -0.048262775760872144,
+        "stoneedge": -0.029001905654402197,
+        "swordsdance": -0.09868246502956031,
+        "corviknight": 0.07186916043113073
       }
     },
     {
@@ -112,6 +154,15 @@
         "flashcannon": -0.204997673106959,
         "stealthrock": -0.2347367231638418,
         "corviknight": -0.09966610169491526
+      },
+      "value_best_response": "corviknight",
+      "value_solved": true,
+      "value_expected": {
+        "magmastorm": -0.060247335814383456,
+        "earthpower": -0.04423382457602676,
+        "flashcannon": -0.03037239078518077,
+        "stealthrock": -0.04889705416559735,
+        "corviknight": 0.05777117081927778
       }
     },
     {
@@ -130,6 +181,14 @@
         "dragonclaw": 0.09482865971773818,
         "stoneedge": -0.007333502444423924,
         "swordsdance": 0.507591694723734
+      },
+      "value_best_response": "swordsdance",
+      "value_solved": true,
+      "value_expected": {
+        "earthquake": 0.04079839294208037,
+        "dragonclaw": 0.021631420231134135,
+        "stoneedge": -0.0009985692575750318,
+        "swordsdance": 0.10383222417141111
       }
     },
     {
@@ -150,6 +209,14 @@
         "dragonclaw": 0.025067567567567544,
         "stoneedge": -0.07709459459459456,
         "swordsdance": -0.054186655405405376
+      },
+      "value_best_response": "earthquake",
+      "value_solved": true,
+      "value_expected": {
+        "earthquake": 0.0245951719780812,
+        "dragonclaw": 0.00796014899745156,
+        "stoneedge": -0.010463428735380968,
+        "swordsdance": 0.001968527622388508
       }
     },
     {
@@ -168,6 +235,14 @@
         "earthquake": 0.1808928489069274,
         "dragonclaw": 0.09482865971773818,
         "firefang": -0.0535370497417213
+      },
+      "value_best_response": "earthquake",
+      "value_solved": false,
+      "value_expected": {
+        "stealthrock": 0.006859128761343681,
+        "earthquake": 0.04079839294208037,
+        "dragonclaw": 0.021631420231134135,
+        "firefang": -0.011356590509142693
       }
     },
     {
@@ -188,6 +263,14 @@
         "earthquake": 0.19041352516518673,
         "dragonclaw": 0.09981964180814545,
         "firefang": -0.056354789201811896
+      },
+      "value_best_response": "earthquake",
+      "value_solved": true,
+      "value_expected": {
+        "stealthrock": -0.04097312965062638,
+        "earthquake": 0.032382446626188,
+        "dragonclaw": 0.017531976097416004,
+        "firefang": -0.009769164899560695
       }
     },
     {
@@ -206,6 +289,14 @@
         "moonlight": 0.2925925925925926,
         "calmmind": -0.20740740740740737,
         "thunderwave": -0.1630740740740741
+      },
+      "value_best_response": "moonlight",
+      "value_solved": true,
+      "value_expected": {
+        "moonblast": -0.024046720319849696,
+        "moonlight": 0.06034927413431305,
+        "calmmind": -0.0391471758887758,
+        "thunderwave": -0.02968265822147191
       }
     },
     {
@@ -224,6 +315,14 @@
         "earthquake": -0.32941176470588235,
         "dragondance": -0.32941176470588235,
         "firepunch": -0.32941176470588235
+      },
+      "value_best_response": "extremespeed",
+      "value_solved": true,
+      "value_expected": {
+        "extremespeed": 0.05429250345859379,
+        "earthquake": -0.07729980549905334,
+        "dragondance": -0.07729980549905334,
+        "firepunch": -0.07729980549905334
       }
     }
   ]

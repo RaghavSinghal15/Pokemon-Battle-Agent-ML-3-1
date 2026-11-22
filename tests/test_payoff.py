@@ -269,3 +269,13 @@ def test_scoring_is_symmetric_under_swapping_the_players():
     value = turn_value(0.7, 0.4, ours, theirs, 0.3, (0.1, 0.05))
     reverse = turn_value(0.4, 0.7, theirs, ours, 0.7, (0.05, 0.1))
     assert value == pytest.approx(-reverse)
+
+
+def test_belief_found_after_a_form_change():
+    """The parser keeps the first form's name; poke-env follows form changes (#fallbacks)."""
+    from pokeagent.decision.payoff import belief_for
+
+    palafin = SetBelief("palafin", move_probs={"jetpunch": 1.0})
+    assert belief_for("palafinhero", {"palafin": palafin}) is palafin
+    assert belief_for("mimikyubusted", {"mimikyu": palafin}) is palafin
+    assert belief_for("garchomp", {"palafin": palafin}) is None

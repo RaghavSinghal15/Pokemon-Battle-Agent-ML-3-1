@@ -20,6 +20,7 @@ from pokeagent.decision.payoff import (
     replacement_tables,
 )
 from pokeagent.decision.strategies import best_response, minimax_lp
+from pokeagent.decision.value_utility import ValueScorer
 from pokeagent.features.build import build_features
 from pokeagent.interfaces import ACTION_CLASSES, Action, BeliefState, Decision, PayoffTable
 from pokeagent.parser.live import state_from_battle
@@ -52,6 +53,8 @@ class ExplainableAgent(Player):
         mode: Literal["flat", "model"] = "flat",
         opponent_model: "OpponentModel | None" = None,
         explanation_stream: TextIO | None = None,
+        utility: Literal["hp", "value"] = "hp",
+        value_model=None,
         **kwargs,
     ):
         if strategy not in ("best_response", "lp"):
@@ -60,11 +63,15 @@ class ExplainableAgent(Player):
             raise ValueError(
                 "mode=model requires an opponent_model; flat mode must not receive one"
             )
+        if utility not in ("hp", "value") or (utility == "value") != (value_model is not None):
+            raise ValueError("utility=value requires a value_model; utility=hp must not get one")
         if not RANDOM_BATTLE_SETS_PATH.is_file():
             raise FileNotFoundError(f"Public Random Battle sets missing: {RANDOM_BATTLE_SETS_PATH}")
         self.rng = np.random.default_rng(seed)
         self.strategy, self.explain = strategy, explain
         self.mode, self.opponent_model = mode, opponent_model
+        # V4: score cells by change in predicted P(win) (value) or HP traded plus a KO bonus (hp).
+        self.utility, self.value_model = utility, value_model
         self.explanation_stream = explanation_stream
         self.last_explanation = ""
         self.decision_counts = Counter()
@@ -192,15 +199,21 @@ class ExplainableAgent(Player):
             else:
                 beliefs = flat_beliefs(battle)
                 forecast = dict.fromkeys(ACTION_CLASSES, 1 / len(ACTION_CLASSES))
+            scorer = None
+            if self.utility == "value":
+                if state is None:
+                    state = state_from_battle(battle)
+                scorer = ValueScorer(self.value_model, state)
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", PayoffApproximationWarning)
-                table = build_payoff_table(battle, beliefs, forecast)
+                extra = {"scorer": scorer} if scorer is not None else {}
+                table = build_payoff_table(battle, beliefs, forecast, **extra)
             decision = (
                 best_response(table)
                 if self.strategy == "best_response"
                 else minimax_lp(table, rng=self.rng)
             )
-            context = (state, beliefs, forecast, table) if state is not None else None
+            context = (state, beliefs, forecast, table) if self.mode == "model" else None
             return self._record(battle, decision, context)
         except (PayoffUnavailable, ValueError, RuntimeError) as error:
             return self._fallback(battle, f"{type(error).__name__}: {error}")

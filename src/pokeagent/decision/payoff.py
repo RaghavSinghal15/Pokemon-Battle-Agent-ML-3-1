@@ -7,8 +7,14 @@ from dataclasses import replace
 
 import numpy as np
 from poke_env.battle import Battle, Move
+from poke_env.data import GenData, to_id_str
 
-from pokeagent.config import PAYOFF_EFFECT_TURNS, PAYOFF_HAZARD_WEIGHT, RANDOM_BATTLE_TEAM_SIZE
+from pokeagent.config import (
+    PAYOFF_EFFECT_TURNS,
+    PAYOFF_HAZARD_WEIGHT,
+    RANDOM_BATTLE_GENERATION,
+    RANDOM_BATTLE_TEAM_SIZE,
+)
 from pokeagent.decision._payoff_state import (
     PayoffUnavailable,
     entry_damage,
@@ -21,7 +27,7 @@ from pokeagent.decision._payoff_state import (
     substitute_hp,
 )
 from pokeagent.decision._turn import turn_value
-from pokeagent.interfaces import ACTION_CLASSES, Action, BeliefState, PayoffTable
+from pokeagent.interfaces import ACTION_CLASSES, Action, BeliefState, PayoffTable, PokemonView
 from pokeagent.models.labels import move_class
 
 SWITCH_COLUMN = "__opponent_switch__"  # A modelled column, never an executable action.
@@ -31,9 +37,30 @@ class PayoffApproximationWarning(UserWarning):
     """A reminder that the scoring policy is approximate, not a battle simulator."""
 
 
+def _base_species(species: str) -> str:
+    entry = GenData.from_gen(RANDOM_BATTLE_GENERATION).pokedex.get(species, {})
+    return to_id_str(entry.get("baseSpecies", "")) or species
+
+
+def belief_for(species: str, beliefs: BeliefState):
+    """The belief about this Pokemon, also after a form change in battle.
+
+    The parser names a Pokemon by the form it first appeared as (palafin), while poke-env
+    follows form changes (palafinhero after Zero to Hero; also Mimikyu-Busted, Eiscue-Noice,
+    Terapagos, Ogerpon's Tera forms). So fall back to a belief with the same base species.
+    """
+    if species in beliefs:
+        return beliefs[species]
+    base = _base_species(species)
+    for name, belief in beliefs.items():
+        if _base_species(name) == base:
+            return belief
+    return None
+
+
 def _opponent_moves(battle: Battle, beliefs: BeliefState) -> list[tuple[Move, float]]:
     opponent = battle.opponent_active_pokemon
-    belief = beliefs.get(opponent.species)
+    belief = belief_for(opponent.species, beliefs)
     weights = dict(belief.move_probs) if belief else {}
     for weight in weights.values():
         if not math.isfinite(weight) or not 0 <= weight <= 1:
@@ -87,7 +114,7 @@ def _probabilities(moves, switch_available, class_probs, complete_move_pool):
 
 
 def build_payoff_table(
-    battle: Battle, beliefs: BeliefState, class_probs: dict[str, float] | None
+    battle: Battle, beliefs: BeliefState, class_probs: dict[str, float] | None, scorer=None
 ) -> PayoffTable:
     """Compare legal moves/switches against candidate moves and one aggregate switch column.
 
@@ -97,6 +124,8 @@ def build_payoff_table(
     PayoffUnavailable rather than inventing moves or assigning a new uniform forecast.
     None forecasts support minimax. Emits PayoffApproximationWarning for omitted mechanics.
     New voluntary tera options are deferred; already changed types are retained.
+    scorer (V4): a decision.value_utility.ValueScorer; cells are then the change in predicted
+    P(win) instead of HP traded plus a knockout bonus.
     """
     if not isinstance(battle, Battle) or battle.gen != 9 or battle.force_switch:
         raise PayoffUnavailable("A table requires a normal Gen 9 singles turn")
@@ -104,7 +133,9 @@ def build_payoff_table(
     if me is None or me.fainted:
         raise PayoffUnavailable("Both active Pokemon must be alive and revealed")
     me_key = next(k for k, mon in battle.team.items() if mon is me)
-    return _table(battle, beliefs, class_probs, me_key, _rows(battle, me_key), entering=False)
+    return _table(
+        battle, beliefs, class_probs, me_key, _rows(battle, me_key), entering=False, scorer=scorer
+    )
 
 
 def _rows(battle: Battle, me_key: str) -> list:
@@ -116,6 +147,16 @@ def _rows(battle: Battle, me_key: str) -> list:
         key = next(k for k, candidate in battle.team.items() if candidate is mon)
         rows.append((Action("switch", mon.species), key, None))
     return rows
+
+
+def _view(mon) -> PokemonView:
+    """The public facts the value model reads about a Pokemon that is about to come in."""
+    return PokemonView(
+        species=mon.species,
+        level=mon.level,
+        hp_fraction=mon.current_hp_fraction,
+        status=mon.status.name.lower() if mon.status else None,
+    )
 
 
 def _table_value(table: PayoffTable) -> float:
@@ -158,7 +199,7 @@ def replacement_tables(
     return tables
 
 
-def _table(battle, beliefs, class_probs, me_key, rows, *, entering, lookahead=True):
+def _table(battle, beliefs, class_probs, me_key, rows, *, entering, lookahead=True, scorer=None):
     """Score rows for our Pokemon at me_key against the opponent's active Pokemon.
 
     entering=True charges hazard damage on every row, because that Pokemon is arriving.
@@ -189,7 +230,7 @@ def _table(battle, beliefs, class_probs, me_key, rows, *, entering, lookahead=Tr
     unseen = max(0, team_size - len(observed))
     if unseen:
         reserves.append((None, unseen))
-    belief = beliefs.get(opp.species)
+    belief = belief_for(opp.species, beliefs)
     probs = _probabilities(moves, bool(reserves), class_probs, bool(belief and belief.move_probs))
     columns = [Action("move", m.id) for m, _ in moves]
     if reserves:
@@ -211,7 +252,14 @@ def _table(battle, beliefs, class_probs, me_key, rows, *, entering, lookahead=Tr
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", PayoffApproximationWarning)
             inner = _table(
-                state, beliefs, class_probs, me_key, next_rows, entering=False, lookahead=False
+                state,
+                beliefs,
+                class_probs,
+                me_key,
+                next_rows,
+                entering=False,
+                lookahead=False,
+                scorer=scorer,
             )
         return _table_value(inner)
 
@@ -225,7 +273,9 @@ def _table(battle, beliefs, class_probs, me_key, rows, *, entering, lookahead=Tr
             if effect is not None:
                 value = 0.0
                 if effect.changes_field:
-                    value += PAYOFF_HAZARD_WEIGHT * hazard_value(battle, effect.battle, unseen)
+                    hazard = PAYOFF_HAZARD_WEIGHT * hazard_value(battle, effect.battle, unseen)
+                    # In value mode, convert HP to P(win) at the current position's rate.
+                    value += hazard * (scorer.hp_slope() if scorer else 1.0)
                 if effect.changes_pokemon and PAYOFF_EFFECT_TURNS:
                     # Look one turn ahead with the stat/status change but the hazards as now
                     # (hazards are valued above, over all remaining switch-ins).
@@ -272,6 +322,16 @@ def _table(battle, beliefs, class_probs, me_key, rows, *, entering, lookahead=Tr
             ours = with_future(ours, future(me_key, opp_key, our_move), their_key == opp_key)
         if their_key == opp_key:
             theirs = with_future(theirs, future(opp_key, me_key, their_move), our_key == me_key)
+        value_terms = {}
+        if scorer is not None:
+            value_terms = {
+                "end_value": scorer.end_value(
+                    None if our_key == me_key else _view(our_mon),
+                    None if their_key in (opp_key, None) else _view(their_mon),
+                    unseen=their_key is None,
+                ),
+                "start_value": scorer.win_probability(),
+            }
         return turn_value(
             our_mon.current_hp_fraction,
             their_mon.current_hp_fraction if their_mon else 1,
@@ -285,6 +345,7 @@ def _table(battle, beliefs, class_probs, me_key, rows, *, entering, lookahead=Tr
                 substitute_hp(our_mon) if our_key == me_key else 0.0,
                 substitute_hp(their_mon) if their_key == opp_key else 0.0,
             ),
+            **value_terms,
         )
 
     values = []

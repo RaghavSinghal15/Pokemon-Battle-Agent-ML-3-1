@@ -10,7 +10,7 @@ if they had all been revealed, so each puzzle tests the decision engine, not the
 
 import logging
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 from poke_env.battle import Battle, Move, Pokemon, Status
@@ -19,7 +19,15 @@ from pokeagent.config import SEED
 from pokeagent.decision.damage import random_battle_stats
 from pokeagent.decision.payoff import PayoffApproximationWarning, build_payoff_table
 from pokeagent.decision.strategies import best_response, minimax_lp
-from pokeagent.interfaces import ACTION_CLASSES, BeliefState, SetBelief
+from pokeagent.decision.value_utility import ValueScorer
+from pokeagent.interfaces import (
+    ACTION_CLASSES,
+    BeliefState,
+    PokemonView,
+    PublicState,
+    SetBelief,
+    SideView,
+)
 
 LIKELY_ATTACK = {"attack": 0.7, "non_damaging": 0.15, "switch": 0.15}
 BLISSEY_LIKELY = {"attack": 0.7, "non_damaging": 0.25, "switch": 0.05}  # Toss, sometimes heals
@@ -46,6 +54,7 @@ class Puzzle:
     accepted: frozenset[str]  # move ids or the species to switch to
     our_reserves: tuple[Mon, ...] = ()
     their_team_size: int = 6  # how many they have left in total, active included
+    our_team_size: int = 6  # ours left in total; members not listed are unrevealed and healthy
     turn: int = 1
     # What a strong player would expect them to do (attack / non_damaging / switch). Part of
     # the puzzle, signed off with the answer: a flat 1/3 forecast would say Blissey uses Seismic
@@ -98,6 +107,34 @@ def build(puzzle: Puzzle) -> tuple[Battle, BeliefState]:
     return battle, beliefs
 
 
+def _view(spec: Mon, active: bool) -> PokemonView:
+    return PokemonView(
+        species=spec.species,
+        level=spec.level,
+        hp_fraction=spec.hp,
+        status=spec.status,
+        boosts=dict(spec.boosts),
+        revealed_moves=list(spec.moves) if not active else [],
+        active=active,
+    )
+
+
+def puzzle_state(puzzle: Puzzle) -> PublicState:
+    """The puzzle as the public start-of-turn state the value model reads, from our side.
+
+    Our reserves count as revealed; their moves count as revealed (the beliefs know them).
+    """
+    ours = [_view(puzzle.ours, True), *(_view(r, False) for r in puzzle.our_reserves)]
+    theirs = replace(_view(puzzle.theirs, True), revealed_moves=list(puzzle.theirs.moves))
+    return PublicState(
+        battle_id=f"puzzle-{puzzle.name}",
+        turn=puzzle.turn,
+        perspective="p1",
+        me=SideView("p1", ours, team_size=max(puzzle.our_team_size, len(ours))),
+        opp=SideView("p2", [theirs], team_size=puzzle.their_team_size),
+    )
+
+
 def _names(mix: dict[str, float]) -> dict[str, float]:
     """'move:earthquake' -> 'earthquake', 'switch:corviknight' -> 'corviknight'."""
     return {label.split(":", 1)[1]: p for label, p in mix.items()}
@@ -106,16 +143,18 @@ def _names(mix: dict[str, float]) -> dict[str, float]:
 FLAT = dict.fromkeys(ACTION_CLASSES, 1 / len(ACTION_CLASSES))
 
 
-def solve(puzzle: Puzzle, forecast: dict | None = None) -> dict:
+def solve(puzzle: Puzzle, forecast: dict | None = None, value_model=None) -> dict:
     """Best response's choice and the minimax mixture's probability on accepted answers.
 
     forecast defaults to the puzzle's own; pass FLAT or a model's forecast to compare.
+    value_model (V4): the logistic value model, to score cells by change in P(win).
     """
     battle, beliefs = build(puzzle)
     forecast = forecast or puzzle.forecast
+    scorer = ValueScorer(value_model, puzzle_state(puzzle)) if value_model else None
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", PayoffApproximationWarning)
-        table = build_payoff_table(battle, beliefs, forecast)
+        table = build_payoff_table(battle, beliefs, forecast, scorer=scorer)
     chosen = best_response(table).chosen.name
     mix = _names(minimax_lp(table, rng=np.random.default_rng(SEED)).mixed_strategy)
     expected = {
@@ -212,6 +251,7 @@ PUZZLES: tuple[Puzzle, ...] = (
         frozenset({"earthquake", "dragonclaw", "firefang"}),
         forecast=BLISSEY_LIKELY,
         their_team_size=1,
+        our_team_size=2,
         turn=30,
     ),
     Puzzle(
