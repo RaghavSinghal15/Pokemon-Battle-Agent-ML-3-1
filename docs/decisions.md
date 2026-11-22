@@ -15,6 +15,17 @@ Template:
 
 ---
 
+## 2026-11-23: Exact-move weights in the payoff table: available, off by default (E8, Raghav with Claude)
+**Decision:** the agent can split each action class's probability among the opponent's moves
+by the exact-move model (E6) instead of by belief inclusion probabilities
+(`ExplainableAgent(exact_move_model=...)`), but the final agent does not use it.
+**Alternatives:** always on; leave E6 out of the agent.
+**Why:** E6 predicts human move choice far better than the belief prior (51% against 31% top-1),
+but against SimpleHeuristicsPlayer it made no difference: 755 of 1,000 with it against 751
+without (same code, value utility, hazard weight 1.0). The bot does not choose moves the way
+people do, so this is the wrong opponent to measure it on; the ladder (A8) is. Until it shows a
+gain there, the simpler agent is the final one.
+
 ## 2026-11-23: Hazard weight 1.0, measured from replays instead of a guessed 0.5 (F10 follow-up, Raghav with Claude)
 **Decision:** `PAYOFF_HAZARD_WEIGHT = 1.0`: entry hazards are worth the damage of one more
 switch-in for every remaining Pokemon.

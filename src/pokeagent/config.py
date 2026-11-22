@@ -30,6 +30,7 @@ VALUE_FEATURES_PATH = PROCESSED_DIR / "value_features.parquet"
 # Trained models and other large outputs (git-ignored).
 ARTIFACTS_DIR = REPO_ROOT / "artifacts"
 OPPONENT_MODEL_PATH = ARTIFACTS_DIR / "opponent_model.pkl"  # the model the agent loads
+EXACT_MOVE_MODEL_PATH = ARTIFACTS_DIR / "exact_move_model.pkl"  # E6, used by the payoff table
 VALUE_MODEL_PATH = ARTIFACTS_DIR / "value_model.pkl"  # P(win) from a position (V2)
 # The payoff utility (V4) uses the logistic value model: fast to apply to every outcome.
 VALUE_UTILITY_MODEL_PATH = ARTIFACTS_DIR / "value_model_logistic_regression.pkl"
