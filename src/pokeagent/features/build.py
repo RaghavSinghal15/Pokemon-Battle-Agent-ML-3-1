@@ -7,6 +7,7 @@ from poke_env.data import GenData, to_id_str
 
 from pokeagent.config import RANDOM_BATTLE_GENERATION
 from pokeagent.interfaces import Action, BeliefState, FeatureRow, PokemonView, PublicState, SideView
+from pokeagent.models.labels import action_class
 
 FEATURE_NAMES = [
     "turn",
@@ -119,18 +120,13 @@ def _move_signals(move_id: str) -> tuple[bool, bool]:
 
 
 def _action_class(dex: GenData, action: Action | None) -> str | None:
+    """The shared label rule (models/labels.py), or None when there is no usable action."""
     if action is None:
         return None
-    if action.kind == "switch":
-        return "switch"
-    if action.kind != "move":
+    try:
+        return action_class(action)
+    except ValueError:
         return None
-    category = dex.moves.get(to_id_str(action.name), {}).get("category")
-    if category in {"Physical", "Special"}:
-        return "attack"
-    if category == "Status":
-        return "non_damaging"
-    return None
 
 
 def build_features(state: PublicState, beliefs: BeliefState) -> FeatureRow:
