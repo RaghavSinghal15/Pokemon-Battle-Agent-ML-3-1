@@ -93,3 +93,13 @@ def test_duplicate_split_is_rejected(inputs):
     with pytest.raises(ValueError, match="Duplicate split assignment"):
         export_features(points, splits, output)
     assert not output.exists()
+
+
+def test_hidden_rows_are_labelled_hidden_and_must_have_no_action(inputs):
+    splits, points, output = inputs
+    _write_points(points, [None, None], ["battle-1", "battle-2"])
+    assert export_features(points, splits, output, hidden=True) == 2
+    assert [row["action_class"] for row in pq.read_table(output).to_pylist()] == ["hidden"] * 2
+    _write_points(points, [{"kind": "move", "name": "nastyplot"}], ["battle-1"])
+    with pytest.raises(ValueError, match="has an action"):
+        export_features(points, splits, output, hidden=True)

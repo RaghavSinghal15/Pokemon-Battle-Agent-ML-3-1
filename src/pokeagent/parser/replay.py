@@ -109,6 +109,9 @@ class _Replay:
         self.species: dict[int, tuple[Pokemon, str]] = {}
         self.last: dict[Player, Action | None] = {}
         self.choices: dict[Player, Action | None] = {}
+        # Sides whose action this turn was forced (Outrage-style lock-in, recharging): not a
+        # choice at all, so neither labelled nor counted as a hidden choice.
+        self.locked: set[Player] = set()
         self.tera: set[Player] = set()
         self.switch_window = False
         self.choice_window = False
@@ -188,6 +191,10 @@ class _Replay:
                 self.choices[side] = Action("move", to_id_str(event[3]), side in self.tera)
             elif any(to_id_str(source) == "lockedmove" for source in sources):
                 self.choices[side] = None
+                self.locked.add(side)
+        elif kind == "cant" and len(event) > 3 and to_id_str(event[3]) == "recharge":
+            self.choices[side] = None
+            self.locked.add(side)
         elif kind in {"cant", "faint"} or (kind == "-damage" and "[from] confusion" in event[4:]):
             self.choices[side] = None
 
@@ -217,6 +224,7 @@ class _Replay:
                     self.species.setdefault(id(mon), (mon, to_id_str(event[3].split(",")[0])))
             if kind == "turn":
                 self.last, self.choices = self.choices, {}
+                self.locked = set()
                 self.tera.clear()
                 self.switch_window = self.choice_window = True
                 return self.snapshot()
@@ -242,6 +250,24 @@ def _labelled(
             yield state, action
 
 
+def _hidden(
+    states: tuple[PublicState, PublicState],
+    choices: dict[Player, Action | None],
+    locked: set[Player],
+) -> Iterator[PublicState]:
+    """States whose player made a free choice that the log never shows.
+
+    That happens when the Pokemon fainted before acting, couldn't move (sleep, paralysis,
+    flinch, confusion), was dragged out, or the battle ended first. Switches always happen
+    before moves, so a hidden choice is (almost) never a switch (docs/08, check 4).
+    """
+    if not choices:
+        return  # nobody acted (a forfeit or timeout ended the battle): no choice to count
+    for state in states:
+        if choices.get(state.perspective) is None and state.perspective not in locked:
+            yield state
+
+
 def iter_public_states(
     battle_id: str, lines: Iterable[str], ratings: Mapping[str, int | None] | None = None
 ) -> Iterator[PublicState]:
@@ -253,17 +279,18 @@ def iter_public_states(
             yield from states
 
 
-def parse_battle(
+def _walk(
     battle_id: str, log: str, winner: str | None, ratings: Mapping[str, int | None]
-) -> list[DecisionPoint]:
-    """Return observable choices paired with their start-of-turn public states."""
+) -> tuple[_Replay, list[tuple[PublicState, Action]], list[PublicState], str | None]:
+    """Replay a log once; return its observed choices, hidden-choice states and winner."""
     replay = _Replay(battle_id, ratings)
     states: tuple[PublicState, PublicState] | None = None
-    observed = []
+    observed, hidden = [], []
     for event in _public_events(battle_id, log.splitlines()):
         kind = event[1]
         if kind == "turn" and states:
             observed.extend(_labelled(states, replay.choices))
+            hidden.extend(_hidden(states, replay.choices, replay.locked))
         if kind == "win" and winner is None and len(event) > 2:
             winner = event[2]
         new_states = replay.feed(event)
@@ -271,6 +298,25 @@ def parse_battle(
             states = new_states
     if states:
         observed.extend(_labelled(states, replay.choices))
+        hidden.extend(_hidden(states, replay.choices, replay.locked))
+    return replay, observed, hidden, winner
+
+
+def hidden_choice_states(
+    battle_id: str, log: str, ratings: Mapping[str, int | None] | None = None
+) -> list[PublicState]:
+    """Start-of-turn states (from the chooser's perspective) whose choice the log hides.
+
+    Used to correct the label bias: dropping these turns over-counts switching.
+    """
+    return _walk(battle_id, log, None, ratings or {})[2]
+
+
+def parse_battle(
+    battle_id: str, log: str, winner: str | None, ratings: Mapping[str, int | None]
+) -> list[DecisionPoint]:
+    """Return observable choices paired with their start-of-turn public states."""
+    replay, observed, _, winner = _walk(battle_id, log, winner, ratings)
     winning_side = (
         winner
         if winner in _PLAYERS

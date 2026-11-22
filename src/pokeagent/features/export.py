@@ -14,6 +14,8 @@ from pokeagent.beliefs.tracker import beliefs_for
 from pokeagent.config import (
     DECISION_POINTS_PATH,
     FEATURES_PATH,
+    HIDDEN_FEATURES_PATH,
+    HIDDEN_POINTS_PATH,
     RANDOM_BATTLE_GENERATION,
     SPLITS_PATH,
 )
@@ -47,7 +49,9 @@ def _split_by_battle(path: Path) -> dict[str, str]:
     return result
 
 
-def _feature_record(record: dict, splits: dict[str, str], dex: GenData) -> dict:
+def _feature_record(
+    record: dict, splits: dict[str, str], dex: GenData, hidden: bool = False
+) -> dict:
     state = PublicState.from_dict(json.loads(record["state"]))
     battle_id = record["battle_id"]
     if (state.battle_id, state.turn, state.perspective) != (
@@ -72,7 +76,13 @@ def _feature_record(record: dict, splits: dict[str, str], dex: GenData) -> dict:
     action = record["action"]
     if isinstance(action, str):
         action = json.loads(action)
-    label = _action_class(dex, Action(**action)) if action else None
+    if hidden:
+        # A hidden-choice turn (E4): the label says only that the choice was not shown.
+        if action:
+            raise ValueError(f"Hidden-choice row has an action in {battle_id}")
+        label = "hidden"
+    else:
+        label = _action_class(dex, Action(**action)) if action else None
     if label is None:
         raise ValueError(f"Unlabelled or unknown action in {battle_id} on turn {state.turn}")
     return {
@@ -84,8 +94,13 @@ def _feature_record(record: dict, splits: dict[str, str], dex: GenData) -> dict:
     }
 
 
-def export_features(decision_points: Path, split_file: Path, output: Path) -> int:
-    """Write one feature row per decision point in batches and return the row count."""
+def export_features(
+    decision_points: Path, split_file: Path, output: Path, hidden: bool = False
+) -> int:
+    """Write one feature row per decision point in batches and return the row count.
+
+    hidden=True reads hidden-choice turns (parser export --hidden) and labels them "hidden".
+    """
     if output.resolve() in {decision_points.resolve(), split_file.resolve()}:
         raise ValueError("The feature table must use a different path from its inputs")
     splits = _split_by_battle(split_file)
@@ -104,7 +119,9 @@ def export_features(decision_points: Path, split_file: Path, output: Path) -> in
             if missing:
                 raise ValueError(f"Missing decision point columns: {', '.join(sorted(missing))}")
             for batch in source.iter_batches(columns=_INPUT_COLUMNS):
-                rows = [_feature_record(record, splits, dex) for record in batch.to_pylist()]
+                rows = [
+                    _feature_record(record, splits, dex, hidden) for record in batch.to_pylist()
+                ]
                 writer.write_table(pa.Table.from_pylist(rows, schema=_OUTPUT_SCHEMA))
                 count += len(rows)
         temporary_path.replace(output)
@@ -119,8 +136,18 @@ def main() -> None:
     parser.add_argument("--decision-points", type=Path, default=DECISION_POINTS_PATH)
     parser.add_argument("--splits", type=Path, default=SPLITS_PATH)
     parser.add_argument("--out", type=Path, default=FEATURES_PATH)
+    parser.add_argument(
+        "--hidden",
+        action="store_true",
+        help="build features for hidden-choice turns (E4 label-bias correction)",
+    )
     args = parser.parse_args()
-    count = export_features(args.decision_points, args.splits, args.out)
+    if args.hidden:
+        if args.decision_points == DECISION_POINTS_PATH:
+            args.decision_points = HIDDEN_POINTS_PATH
+        if args.out == FEATURES_PATH:
+            args.out = HIDDEN_FEATURES_PATH
+    count = export_features(args.decision_points, args.splits, args.out, hidden=args.hidden)
     print(f"Wrote {count} feature rows to {args.out}")
 
 

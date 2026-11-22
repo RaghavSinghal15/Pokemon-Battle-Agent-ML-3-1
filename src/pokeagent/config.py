@@ -18,9 +18,14 @@ PROCESSED_DIR = DATA_DIR / "processed"  # decision points and feature tables
 SPLITS_PATH = DATA_DIR / "splits.json"  # which battle ids are train / validation / test
 DECISION_POINTS_PATH = PROCESSED_DIR / "decision_points.parquet"
 FEATURES_PATH = PROCESSED_DIR / "features.parquet"
+# Turns whose choice the log hides (fainted first, couldn't move): used only to correct the
+# label bias in the opponent model (E4), never as labelled examples.
+HIDDEN_POINTS_PATH = PROCESSED_DIR / "hidden_points.parquet"
+HIDDEN_FEATURES_PATH = PROCESSED_DIR / "hidden_features.parquet"
 
 # Trained models and other large outputs (git-ignored).
 ARTIFACTS_DIR = REPO_ROOT / "artifacts"
+OPPONENT_MODEL_PATH = ARTIFACTS_DIR / "opponent_model.pkl"  # the model the agent loads
 
 # Small results that ARE committed: figures, result tables, the report.
 REPORTS_DIR = REPO_ROOT / "reports"

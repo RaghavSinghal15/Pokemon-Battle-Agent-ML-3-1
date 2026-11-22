@@ -10,8 +10,8 @@ from tempfile import NamedTemporaryFile
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from pokeagent.config import INTERIM_DIR, PROCESSED_DIR, SPLITS_PATH
-from pokeagent.parser.replay import ReplayParseError, parse_battle
+from pokeagent.config import HIDDEN_POINTS_PATH, INTERIM_DIR, PROCESSED_DIR, SPLITS_PATH
+from pokeagent.parser.replay import ReplayParseError, hidden_choice_states, parse_battle
 
 _SCHEMA = pa.schema(
     [
@@ -39,8 +39,13 @@ def export_decision_points(
     output: Path,
     *,
     battle_ids: set[str] | None = None,
+    hidden: bool = False,
 ) -> ParseSummary:
-    """Convert selected battles, skipping whole games with invalid or unsupported events."""
+    """Convert selected battles, skipping whole games with invalid or unsupported events.
+
+    With hidden=True, write the turns whose choice the log hides instead (action and won are
+    empty); they correct the opponent model's label bias and are never labelled examples.
+    """
     if output.resolve() == battles_path.resolve():
         raise ValueError("Input and output must use different files")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -77,21 +82,32 @@ def export_decision_points(
                     if isinstance(ratings, str):
                         ratings = json.loads(ratings)
                     try:
-                        points = parse_battle(battle_id, log, battle.get("winner"), dict(ratings))
+                        if hidden:
+                            points = [
+                                (state, None, None)
+                                for state in hidden_choice_states(battle_id, log, dict(ratings))
+                            ]
+                        else:
+                            points = [
+                                (p.state, asdict(p.action), p.won)
+                                for p in parse_battle(
+                                    battle_id, log, battle.get("winner"), dict(ratings)
+                                )
+                            ]
                     except ReplayParseError as exc:
                         summary.errors[exc.event] += 1
                         continue
-                    if not points:
+                    if not points and not hidden:
                         summary.errors["no observable choices"] += 1
-                    for point in points:
+                    for state, action, won in points:
                         rows.append(
                             {
                                 "battle_id": battle_id,
-                                "turn": point.state.turn,
-                                "perspective": point.state.perspective,
-                                "state": json.dumps(point.state.to_dict()),
-                                "action": asdict(point.action),
-                                "won": point.won,
+                                "turn": state.turn,
+                                "perspective": state.perspective,
+                                "state": json.dumps(state.to_dict()),
+                                "action": action,
+                                "won": won,
                             }
                         )
                 if rows:
@@ -112,11 +128,20 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=PROCESSED_DIR / "decision_points.parquet")
     parser.add_argument("--splits", type=Path, default=SPLITS_PATH)
     parser.add_argument("--split", choices=("train", "val", "test"))
+    parser.add_argument(
+        "--hidden",
+        action="store_true",
+        help=f"write hidden-choice turns instead (default output {HIDDEN_POINTS_PATH.name})",
+    )
     args = parser.parse_args()
+    if args.hidden and args.out == PROCESSED_DIR / "decision_points.parquet":
+        args.out = HIDDEN_POINTS_PATH
     battle_ids = None
     if args.split:
         battle_ids = set(json.loads(args.splits.read_text(encoding="utf-8"))[args.split])
-    summary = export_decision_points(args.input, args.out, battle_ids=battle_ids)
+    summary = export_decision_points(
+        args.input, args.out, battle_ids=battle_ids, hidden=args.hidden
+    )
     print(f"Wrote {summary.rows:,} rows from {summary.battles:,} battles to {args.out}")
     for reason, count in summary.errors.most_common():
         print(f"  {reason}: {count:,}")

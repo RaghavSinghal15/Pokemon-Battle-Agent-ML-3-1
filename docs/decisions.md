@@ -15,6 +15,29 @@ Template:
 
 ---
 
+## 2026-11-22: Correct the hidden-choice label bias with a "hidden" class; no separate calibration (E4 #32, C6 #91, Raghav with Claude)
+**Decision:** the parser also exports turns whose choice the log hides (the Pokemon fainted
+before acting, couldn't move or was dragged out; lock-ins and recharging are not choices and
+stay out). The opponent model trains on all turns with "hidden" as a fourth class, then folds
+it back: P(switch) is the switch column unchanged, and the hidden share is split between attack
+and non-damaging in the ratio the model gives them for that state. The model is chosen and
+reported by log loss on all turns, where a hidden turn scores -log(1 - P(switch)). No Platt or
+isotonic step is added.
+**Alternatives:** accept and report the bias; reweight classes to an estimated true frequency
+(fixes the average but not the per-state error); a separate model of P(choice visible | state)
+(equivalent, but two models); Platt or isotonic calibration on validation.
+**Why:** 10.4% of human choices are hidden (88,624 turns), and a switch is never one of them,
+because switches happen first. Trained on visible turns only, LightGBM predicts a 19.9% switch
+rate on validation against a true 17.1%, and is most overconfident where it matters: when it
+says 66% switch, players switch 55% of the time. With the hidden class it predicts 17.3%, and
+the switch calibration error falls from 0.028 to 0.004 (reports/figures/
+opponent_switch_reliability.png). All-turns log loss improves from 0.729 to 0.721. The folding
+assumption is supported by bot games with known choices: 91% of hidden choices were attacks,
+against 90% of visible non-switch choices (docs/08). Attack-vs-non-damaging was already
+calibrated (error 0.007), so the remaining miscalibration came from the bias, not the model, and
+a calibration step would have to be fitted on the validation set that already chose the model.
+Visible-only log loss gets worse (0.774 to 0.782), as it should: that metric rewards the bias.
+
 ## 2026-11-22: Opponent model v1 candidates: logistic regression and LightGBM, chosen by validation log loss (E2 #15, E3 #31, Raghav with Claude)
 **Decision:** both models train on the train split; every choice (logistic regression's C,
 LightGBM's leaves per tree and number of trees by early stopping) is made on validation log
