@@ -15,6 +15,18 @@ Template:
 
 ---
 
+## 2026-11-23: Hazard weight 1.0, measured from replays instead of a guessed 0.5 (F10 follow-up, Raghav with Claude)
+**Decision:** `PAYOFF_HAZARD_WEIGHT = 1.0`: entry hazards are worth the damage of one more
+switch-in for every remaining Pokemon.
+**Alternatives:** keep the guessed 0.5; use the raw replay figure (about 1.6); tune it on games.
+**Why:** in our training replays, a Pokemon that still has to come in does so 1.6 times after
+turn 1 (1.5 after turn 5, 1.3 after turn 20). Heavy-Duty Boots (immune to hazards) and hazard
+removal (Rapid Spin, Defog) cancel part of that, so we round down to 1.0. Games, value utility,
+best response, 1,000 each against SimpleHeuristicsPlayer: 751 at 1.0 and 751 at 0.5, so the
+heuristic bot does not reward hazards either way. With 1.0 the value-utility agent solves all
+12 puzzles, including Stealth Rock on turn 1. We chose the weight from the replays, not to fit
+the puzzle, so the puzzle stays an independent check.
+
 ## 2026-11-23: Score the payoff table by change in predicted win probability (V4 #74, Raghav with Claude)
 **Decision:** each cell is P(win at the end of the turn) - P(win now), from the logistic value
 model (V2), instead of HP traded plus a 0.25 knockout bonus. Only the HP features change within
