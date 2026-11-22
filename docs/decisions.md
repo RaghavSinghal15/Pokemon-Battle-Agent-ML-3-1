@@ -15,6 +15,22 @@ Template:
 
 ---
 
+## 2026-11-22: Drain, recoil, Substitute and end-of-turn HP in the payoff table (F11 #69, Raghav with Claude)
+**Decision:** drain moves heal their share of the damage dealt and recoil moves cost theirs
+(both converted to the user's HP); Substitute costs 1/4 of max HP, then absorbs hits and blocks
+effects aimed at its owner (sound moves and hazards go through; an existing Substitute is
+assumed full, because the log does not show its HP); at the end of the turn a Pokemon still
+standing gains or loses HP from Leftovers, Black Sludge, burn, poison, toxic (counting up) and
+sandstorm, with Magic Guard and Poison Heal respected when known.
+**Alternatives:** leave them out (the old warning listed them as missing); a full end-of-turn
+order as in the game.
+**Why:** these are common in Random Battles and the table was blind to them: Giga Drain looked
+like a plain weak attack and a burned opponent's chip damage did not count. Games (best
+response, 1,000 each against SimpleHeuristicsPlayer): 650 (61.9% to 67.9%) with F11 against 670
+(64.0% to 69.8%) without, a difference well within noise (p about 0.34). Puzzles stay at 11/12.
+We keep it because it models the game more faithfully at no measurable cost; the heuristic bot
+rarely uses Substitute or drain, so these games cannot show much either way.
+
 ## 2026-11-22: Allow PyTorch for the deep-learning comparison, inside `dl/` only (X4 #75, Raghav)
 **Decision:** `torch` may be imported only in `src/pokeagent/dl/`, installed with the optional
 `[dl]` extra. Nothing else imports from `dl/`, so `pip install -e ".[dev]"` and CI stay light.
