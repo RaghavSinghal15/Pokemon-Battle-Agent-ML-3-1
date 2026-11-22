@@ -16,7 +16,9 @@ from pokeagent.decision._payoff_state import (
     hazard_value,
     lasting_effect,
     move_effect,
+    residual,
     scenario_copy,
+    substitute_hp,
 )
 from pokeagent.decision._turn import turn_value
 from pokeagent.interfaces import ACTION_CLASSES, Action, BeliefState, PayoffTable
@@ -277,6 +279,12 @@ def _table(battle, beliefs, class_probs, me_key, rows, *, entering, lookahead=Tr
             theirs,
             first_probability(scenario, our_move, their_move),
             losses,
+            residuals=(residual(our_mon, scenario), residual(their_mon, scenario)),
+            # A Substitute leaves with its owner, so only the Pokemon staying in keeps one.
+            substitutes=(
+                substitute_hp(our_mon) if our_key == me_key else 0.0,
+                substitute_hp(their_mon) if their_key == opp_key else 0.0,
+            ),
         )
 
     values = []
@@ -297,7 +305,8 @@ def _table(battle, beliefs, class_probs, me_key, rows, *, entering, lookahead=Tr
     warnings.warn(
         "Approximate payoffs: two damage endpoints and limited accuracy/order modifiers; "
         "lasting effects valued one turn ahead from the current HP; no chance-based "
-        "secondary effects, residual damage, switch-in abilities or new tera choices. "
+        "secondary effects, switch-in abilities, new tera choices, Grassy Terrain, Leech Seed "
+        "or the HP left in a damaged Substitute. "
         "Candidate moves need not be exhaustive. Unseen switch targets receive zero outgoing "
         "credit. See docs/f4-implementation.md.",
         PayoffApproximationWarning,

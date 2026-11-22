@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from poke_env.battle import (
     Battle,
+    Effect,
     Field,
     Move,
     MoveCategory,
@@ -147,6 +148,8 @@ def move_effect(
             act_chance=can_act,
             hit_chance=accuracy,
             blocked_by_protect=not aimed_at_self,
+            substitute=move.id == "substitute",
+            blocked_by_substitute=_blocked_by_substitute(move, aimed_at_self),
         )
     if move.entry.get("flags", {}).get("charge"):
         # A conservative first-charge-turn approximation, even with weather/Power Herb.
@@ -168,6 +171,10 @@ def move_effect(
         accuracy = min(1, move.accuracy * max(3, 3 + stage) / max(3, 3 - stage))
     if attacker.ability == "noguard" or target.ability == "noguard":
         accuracy = 1.0
+    # Drain and recoil are fractions of the damage dealt, which is measured in the target's HP;
+    # convert to the user's HP. Magic Guard (when known) prevents recoil.
+    hp_ratio = target.stats["hp"] / attacker.stats["hp"]
+    recoil = 0.0 if attacker.ability == "magicguard" else move.recoil * hp_ratio
     return TurnEffect(
         damage=(low / target.stats["hp"], high / target.stats["hp"]),
         hit_chance=accuracy,
@@ -175,7 +182,65 @@ def move_effect(
         self_ko=self_ko,
         blocked_by_protect=bool(move.entry.get("flags", {}).get("protect"))
         and not move.breaks_protect,
+        drain=move.drain * hp_ratio,
+        recoil=recoil,
+        blocked_by_substitute=_blocked_by_substitute(move, False),
     )
+
+
+def _blocked_by_substitute(move: Move, aimed_at_self: bool) -> bool:
+    """Substitute stops moves aimed at its owner, except sound moves (Boomburst, Torch Song)
+    and moves that hit the whole side (hazards). Infiltrator is not modelled."""
+    target = to_id_str(str(move.target).split()[0])
+    if aimed_at_self or target in {"foeside", "allyside", "all"}:
+        return False
+    return not move.entry.get("flags", {}).get("sound")
+
+
+# End-of-turn HP changes, as fractions of max HP (Showdown residual order is ignored).
+_SAND_IMMUNE_TYPES = {PokemonType.ROCK, PokemonType.GROUND, PokemonType.STEEL}
+_SAND_IMMUNE_ABILITIES = {"sandveil", "sandrush", "sandforce", "overcoat", "magicguard"}
+
+
+def residual(mon: Pokemon | None, battle: Battle) -> float:
+    """HP this Pokemon gains (+) or loses (-) at the end of a turn from its item, status and
+    the weather. Only known items and abilities count. Grassy Terrain, Leech Seed, Salt Cure
+    and other rarer effects are not modelled.
+    """
+    if mon is None:
+        return 0.0
+    change = 0.0
+    item, ability = mon.item or "", mon.ability or ""
+    if item == "leftovers":
+        change += 1 / 16
+    elif item == "blacksludge":
+        change += 1 / 16 if PokemonType.POISON in mon.types else -1 / 8
+    status = mon.status
+    if ability == "poisonheal" and status in (Status.PSN, Status.TOX):
+        change += 1 / 8
+    elif status == Status.BRN:
+        change -= 1 / 16
+    elif status == Status.PSN:
+        change -= 1 / 8
+    elif status == Status.TOX:
+        change -= min(15, mon.status_counter + 1) / 16
+    sand = Weather.SANDSTORM in battle.weather
+    if (
+        sand
+        and not _SAND_IMMUNE_TYPES & set(mon.types)
+        and ability not in _SAND_IMMUNE_ABILITIES
+        and item != "safetygoggles"
+    ):
+        change -= 1 / 16
+    if ability == "magicguard":
+        change = max(change, 0.0)  # Magic Guard: no indirect damage
+    return change
+
+
+def substitute_hp(mon: Pokemon | None) -> float:
+    """HP left in a Substitute that is already up. The log does not say how damaged it is,
+    so a full one (1/4 of max HP) is assumed."""
+    return 0.25 if mon is not None and Effect.SUBSTITUTE in mon.effects else 0.0
 
 
 # ---------------------------------------------------------------------------------------
@@ -288,6 +353,11 @@ def lasting_effect(
     if status_move and move.status is not None and _status_can_land(target, move.status, move):
         target._status = move.status
         target_changed = True
+
+    # A Substitute stays up after this turn (its HP cost is paid this turn, in turn_value).
+    if move.id == "substitute" and Effect.SUBSTITUTE not in user.effects:
+        user._effects[Effect.SUBSTITUTE] = 0
+        user_changed = True
 
     # Entry hazards on the foe's side, and hazard removal.
     condition = move.side_condition
