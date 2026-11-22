@@ -15,6 +15,99 @@ Template:
 
 ---
 
+## 2026-11-22: Exact-move prediction from (position, candidate move) pairs (E6 #79, Raghav with Claude)
+**Decision:** for a decision where the opponent used a move, the candidates are the moves the
+beliefs allow plus those already revealed. A LightGBM classifier scores each (position,
+candidate) pair by whether that move was the one used; the scores are normalised within the
+decision. Pair features: belief probability, revealed, used last turn, attack or not, base
+power, accuracy, priority, type effectiveness against our active Pokemon, STAB, setup /
+recovery / hazard / Protect / pivot / status flags, the user's and target's HP, the user's
+boosts, the turn and the number of candidates.
+**Alternatives:** one multiclass model over all ~700 moves (most never apply to the Pokemon on
+the field); the belief prior alone.
+**Why:** scoring pairs lets one model learn "players pick super-effective, strong, same-type
+moves" across every species. Validation (all decisions where a move was used; the used move
+was a candidate 99.6% of the time, and misses count with probability 1e-4):
+
+| Model | Top-1 | Top-3 | Log loss |
+|---|---|---|---|
+| uniform over candidates | 22.4% | 61.7% | 1.713 |
+| belief prior | 30.7% | 72.4% | 1.622 |
+| LightGBM on pairs | 50.8% | 86.9% | 1.281 |
+
+The belief probability carries 25% of the gain, type effectiveness 15%, "used last turn" 10%.
+It is not wired into the payoff table yet: the table weights the opponent's moves by belief
+probabilities, and this model could replace those weights in a later change.
+
+## 2026-11-22: Deep-learning opponent models: neither beats LightGBM; game history helps a little (DL1 #76, DL2 #77, Raghav with Claude)
+**Decision:** keep the per-turn LightGBM as the agent's opponent model. Report the two neural
+models as the comparison: DL1, a per-turn MLP (two ReLU layers with dropout, on the same 36
+features), and DL2, a GRU that reads the player's whole game so far (each decision's features
+plus their previous action, including "hidden").
+**Alternatives:** use the GRU in the agent; a small transformer instead of the GRU.
+**Why:** validation, all-turns log loss (all trained with the hidden class, same splits):
+
+| Model | Log loss | Accuracy | Macro-F1 |
+|---|---|---|---|
+| naive class frequencies | 0.891 | 57.8% | 0.244 |
+| logistic regression | 0.759 | 62.7% | 0.511 |
+| MLP (256, 128), DL1 | 0.681 | 66.3% | 0.569 |
+| GRU, no memory (ablation) | 0.687 | 66.1% | 0.570 |
+| GRU over the game, DL2 | 0.677 | 66.8% | 0.583 |
+| LightGBM (chosen) | 0.670 | 67.2% | 0.584 |
+
+The same GRU with its memory removed loses 0.0095, so what this player did earlier in the game
+carries real signal beyond the current position (and beyond the "last action" features). But
+LightGBM on the per-turn features is still best: on tabular features like ours, boosted trees
+usually beat neural networks, and most of the history's value is already in the position. The
+GRU also costs far more to train (84 minutes against a few for LightGBM) and needs the game
+history at play time. A transformer would answer the same question with more parameters; the
+GRU's small gain suggests it would not change the conclusion. A test cuts each game after turn
+N and checks that predictions up to N do not change, so the GRU cannot see the future.
+
+## 2026-11-22: Play styles: four soft groups, and no style feature in the opponent model (E7 #80, Raghav with Claude)
+**Decision:** describe each player by six shares of their decisions in training games (switch,
+attack, setup, hazard, other status, Protect), cluster with k-means and a Gaussian mixture on
+standardised shares, and plot with PCA. Report the clusters; do not add a style feature to the
+opponent model.
+**Alternatives:** cluster on all six shares; use a player's style (from their other training
+games, leave-one-out) as features for LightGBM.
+**Why:** 1,058 players have 5+ training games. The shares add up to 1, so we cluster on five
+of them: with all six, the Gaussian mixture's covariances were near-singular and its BIC fell
+from 2,841 to 93 for no real reason. On five shares, k-means (best silhouette) and the mixture
+(best BIC) agree on four groups: switchers (23% switches), setup sweepers (11% setup),
+status/Protect users (15% other status) and hazard setters (4% hazards). The silhouette is
+only 0.18, so styles are a continuum with soft groups, not distinct types (2-D PCA keeps 53% of
+the variance). Adding the style to LightGBM made validation log loss worse (0.678 vs 0.670,
+also for the 83% of rows whose player has a known style), and early stopping came at 424 trees
+instead of 999: the near-unique style vector acts as a player fingerprint and the trees
+overfit to it. Usernames link a player's games locally and never leave data/.
+
+## 2026-11-22: Drain, recoil, Substitute and end-of-turn HP in the payoff table (F11 #69, Raghav with Claude)
+**Decision:** drain moves heal their share of the damage dealt and recoil moves cost theirs
+(both converted to the user's HP); Substitute costs 1/4 of max HP, then absorbs hits and blocks
+effects aimed at its owner (sound moves and hazards go through; an existing Substitute is
+assumed full, because the log does not show its HP); at the end of the turn a Pokemon still
+standing gains or loses HP from Leftovers, Black Sludge, burn, poison, toxic (counting up) and
+sandstorm, with Magic Guard and Poison Heal respected when known.
+**Alternatives:** leave them out (the old warning listed them as missing); a full end-of-turn
+order as in the game.
+**Why:** these are common in Random Battles and the table was blind to them: Giga Drain looked
+like a plain weak attack and a burned opponent's chip damage did not count. Games (best
+response, 1,000 each against SimpleHeuristicsPlayer): 650 (61.9% to 67.9%) with F11 against 670
+(64.0% to 69.8%) without, a difference well within noise (p about 0.34). Puzzles stay at 11/12.
+We keep it because it models the game more faithfully at no measurable cost; the heuristic bot
+rarely uses Substitute or drain, so these games cannot show much either way.
+
+## 2026-11-22: Allow PyTorch for the deep-learning comparison, inside `dl/` only (X4 #75, Raghav)
+**Decision:** `torch` may be imported only in `src/pokeagent/dl/`, installed with the optional
+`[dl]` extra. Nothing else imports from `dl/`, so `pip install -e ".[dev]"` and CI stay light.
+**Alternatives:** scikit-learn's MLPClassifier only (no sequence models); no deep learning.
+**Why:** the question we want to answer is whether a model that reads the whole game so far
+(a GRU or small transformer) predicts the opponent better than per-turn models. scikit-learn
+has no sequence models, so this needs a deep-learning library. Keeping it in one package keeps
+the core agent's install and the viva story simple.
+
 ## 2026-11-22: Puzzle positions with their own forecast, and the healing moves they exposed (V3 #73, Raghav with Claude)
 **Decision:** twelve hand-built positions in `eval/puzzles.py`, each with the accepted answer(s)
 and the forecast a strong player would expect (Blissey uses Seismic Toss 70% of the time, not a
