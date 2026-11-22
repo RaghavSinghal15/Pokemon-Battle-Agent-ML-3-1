@@ -14,6 +14,16 @@ from pokeagent.models.value import train_value_logistic
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
 
+@pytest.fixture(autouse=True)
+def public_sets(tmp_path, monkeypatch):
+    """An empty stand-in sets file, so these tests need no Showdown checkout (as in CI)."""
+    from pokeagent.beliefs import tracker
+
+    path = tmp_path / "sets.json"
+    path.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(tracker, "RANDOM_BATTLE_SETS_PATH", path)
+
+
 @pytest.fixture(scope="module")
 def value_model():
     """A logistic value model on synthetic rows: more HP and more Pokemon left -> more wins."""
