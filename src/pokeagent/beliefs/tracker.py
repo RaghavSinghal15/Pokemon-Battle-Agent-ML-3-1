@@ -7,9 +7,13 @@ from functools import lru_cache
 from math import comb
 from pathlib import Path
 
-from poke_env.data import to_id_str
+from poke_env.data import GenData, to_id_str
 
-from pokeagent.config import RANDOM_BATTLE_MOVE_SLOTS, RANDOM_BATTLE_SETS_PATH
+from pokeagent.config import (
+    RANDOM_BATTLE_GENERATION,
+    RANDOM_BATTLE_MOVE_SLOTS,
+    RANDOM_BATTLE_SETS_PATH,
+)
 from pokeagent.interfaces import BeliefState, PokemonView, PublicState, SetBelief
 
 
@@ -90,10 +94,24 @@ def _marginals(
     )
 
 
+def _templates(species: str) -> tuple[_SetTemplate, ...]:
+    """Set templates for a species, or for its base species if it is a cosmetic form.
+
+    Cosmetic forms (pikachuhoenn, polteageistantique, miniorviolet ...) look different but
+    play exactly like their base species, and sets.json lists only the base species (#60).
+    """
+    sets = _load_sets(RANDOM_BATTLE_SETS_PATH)
+    if species in sets:
+        return sets[species]
+    entry = GenData.from_gen(RANDOM_BATTLE_GENERATION).pokedex.get(species, {})
+    base = to_id_str(entry.get("baseSpecies", ""))
+    return sets.get(base, ()) if base and base != species else ()
+
+
 def prior_belief(species: str) -> SetBelief:
     """Give each set template equal weight before seeing any battle evidence."""
     species = to_id_str(species)
-    templates = _load_sets(RANDOM_BATTLE_SETS_PATH).get(species, ())
+    templates = _templates(species)
     return _marginals(species, [(template, 1.0) for template in templates])
 
 
@@ -134,7 +152,7 @@ def update_belief(belief: SetBelief, seen: PokemonView) -> SetBelief:
     tera_type = to_id_str(seen.tera_type or "") if seen.terastallized else ""
     item = to_id_str(seen.revealed_item or "")
 
-    templates = _load_sets(RANDOM_BATTLE_SETS_PATH).get(species, ())
+    templates = _templates(species)
     role_counts = Counter(template.role for template in templates)
     weights = []
     for template in templates:
