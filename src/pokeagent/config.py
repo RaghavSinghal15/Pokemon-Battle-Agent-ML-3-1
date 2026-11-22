@@ -28,6 +28,7 @@ VALUE_FEATURES_PATH = PROCESSED_DIR / "value_features.parquet"
 # Trained models and other large outputs (git-ignored).
 ARTIFACTS_DIR = REPO_ROOT / "artifacts"
 OPPONENT_MODEL_PATH = ARTIFACTS_DIR / "opponent_model.pkl"  # the model the agent loads
+VALUE_MODEL_PATH = ARTIFACTS_DIR / "value_model.pkl"  # P(win) from a position (V2)
 
 # Small results that ARE committed: figures, result tables, the report.
 REPORTS_DIR = REPO_ROOT / "reports"
