@@ -15,6 +15,21 @@ Template:
 
 ---
 
+## 2026-11-22: How we test on the public ladder (A8 #82, Raghav with Claude)
+**Decision:** `scripts/play_ladder.py` plays one game at a time on the official
+gen9randombattle ladder from a dedicated bot account whose name and password are environment
+variables on Raghav's laptop. We record each game's result and Elo before and after (read from
+the server's rating line, because poke-env keeps only the "before" number), and save replays
+and explanation logs in `data/` (git-ignored, since they name other players). Only a summary with
+no usernames (wins, Wilson interval, rating path, mean opponent rating) goes to `reports/`.
+`--local` rehearses the same loop on the local server against the heuristics bot.
+**Alternatives:** only bot-vs-bot games on the local server; several games at once; committing
+per-game logs.
+**Why:** people are the target the opponent model was trained on, so the ladder is the real
+test; the heuristics bot stays the fast, repeatable yardstick during development. One game at a
+time keeps us a good citizen on the public server. A 2-game local rehearsal recorded 1000 ->
+1045 -> 1034 correctly.
+
 ## 2026-11-22: Seven belief-based features for non-damaging threats (D7 #90, Raghav with Claude)
 **Decision:** add seven features computed from the beliefs about the acting player's moves: the
 expected number of Status moves in its set; the most likely status-inflicting move that could
