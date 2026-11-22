@@ -15,6 +15,36 @@ Template:
 
 ---
 
+## 2026-11-22: Seven belief-based features for non-damaging threats (D7 #90, Raghav with Claude)
+**Decision:** add seven features computed from the beliefs about the acting player's moves: the
+expected number of Status moves in its set; the most likely status-inflicting move that could
+land on our active Pokemon now (no status yet, no type immunity); the most likely hazard move
+whose hazard isn't maxed on our side (only if we have more than one Pokemon left); the most
+likely hazard-removal move when hazards are on its own side; and the probabilities of Protect,
+Substitute and a pivot move (U-turn, Parting Shot ...).
+**Alternatives:** more raw counts (revealed status moves only); a separate model per move type;
+leaving the model to learn this from the existing 29 features.
+**Why:** the opponent model caught only 32% of non-damaging turns, mostly calling them attacks,
+because the 29 features never said what the player could usefully do with a status move right
+now. On validation (bias-corrected LightGBM, all turns) log loss falls from 0.721 to 0.670,
+accuracy rises from 64.8% to 67.2% and non-damaging recall from 32% to 48%; the switch forecast
+stays calibrated (error 0.004). "Expected status moves" is the most-used feature by gain (13%).
+All seven use only public information through the beliefs, so they add no leakage.
+
+## 2026-11-22: A better forecast barely moves the win rate; work on the payoff table next (E, F, Raghav with Claude)
+**Decision:** after plugging the opponent model into the agent, put the next effort into the
+payoff table (#66 to #69) and the value model (#71 to #74), not into a better forecast.
+**Alternatives:** keep improving the opponent model first; run more games to resolve the small
+differences.
+**Why:** best response against SimpleHeuristicsPlayer, 1,000 games each (Wilson 95%): no beliefs
+and a flat 1/3 forecast 617 (58.6% to 64.7%); beliefs with a flat forecast 606 (57.5% to 63.6%);
+beliefs with the bias-corrected LightGBM forecast (29 features) 632 (60.2% to 66.1%). The model
+adds about 2.6 points over beliefs alone, which is not significant (z about 1.2). The forecast
+mostly helps when we can punish a predicted switch or setup turn, and the one-turn payoff table
+gives setup, status and hazard moves almost no value, so it cannot act on that knowledge. A
+1,000-game run can only detect differences of about 4 points, so more games would not settle
+this; the puzzle positions (#73) will show which decisions the forecast changes.
+
 ## 2026-11-22: Correct the hidden-choice label bias with a "hidden" class; no separate calibration (E4 #32, C6 #91, Raghav with Claude)
 **Decision:** the parser also exports turns whose choice the log hides (the Pokemon fainted
 before acting, couldn't move or was dragged out; lock-ins and recharging are not choices and
