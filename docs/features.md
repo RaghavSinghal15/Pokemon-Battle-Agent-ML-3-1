@@ -71,3 +71,29 @@ and both previous actions before building features, so `opp_` describes the play
 whose action is the label. The output `perspective` field still identifies that
 labelled player, matching the input key. Train using the exact columns listed in
 `FEATURE_NAMES`. Use `action_class` as the label and `split` to select rows.
+
+## Value-model features (V1)
+
+The value model predicts whether a player wins from the start-of-turn position. Its table,
+`data/processed/value_features.parquet`, is written by `python -m pokeagent.features.value`.
+It has one row per decision point and the label `won`.
+
+The orientation is different from the opponent-model table. Here `my_` is the player whose
+win we predict (the decision point's own perspective) and `opp_` is its opponent. So the
+`opp_` belief features describe what that player's opponent might do to it.
+
+The columns are all of `FEATURE_NAMES` above, plus eight whole-team features:
+
+| Feature | What it measures |
+|---|---|
+| `my_team_hp` | Our team's total HP in Pokémon: revealed, unfainted HP fractions plus 1 per unrevealed teammate (they have not been hit). |
+| `opp_team_hp` | The same for their team. |
+| `my_statused` | How many of our revealed, unfainted Pokémon have a persistent status. |
+| `opp_statused` | The same for their team. |
+| `my_faster_than` | How many of their revealed, unfainted Pokémon our active Pokémon moves before (reversed under Trick Room). |
+| `opp_faster_than` | How many of ours their active Pokémon moves before. |
+| `my_super_effective` | How many of their revealed, unfainted Pokémon our active Pokémon's own types hit for 2× or more. |
+| `opp_super_effective` | How many of ours their active Pokémon's types hit for 2× or more. |
+
+Ladder ratings are left out on purpose. They predict the winner well, but they describe the
+players, not the position. The agent also does not reliably see them during a live game.

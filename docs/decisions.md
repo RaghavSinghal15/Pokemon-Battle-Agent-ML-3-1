@@ -15,6 +15,37 @@ Template:
 
 ---
 
+## 2026-11-22: The value model's training table (V1 #71, Raghav with Claude)
+**Decision:** one row per decision point, with features from that player's own side and the
+label "did this player win". The features are the 36 opponent-model features plus eight
+whole-team ones: total HP, status count, how many of their Pokemon our active one outspeeds,
+and how many it hits super effectively (and the same for them). Both players' rows of a turn are
+kept. Ladder ratings are excluded.
+**Alternatives:** one row per turn from p1's side only; damage-calculator features such as "how
+many of theirs can we knock out in one hit"; ratings as features.
+**Why:** both sides' rows double the data and teach the model that the game is symmetric.
+Splits are by battle, so the two mirrored rows never cross splits. Type and speed counts are
+cheap (2 minutes for 765,596 rows) and need no guess about unknown sets. Damage-calculator
+counts can come later if the model needs them. Ratings describe the players rather than the
+position, and the agent does not reliably see them in a live game. A quick check on train shows
+the signal: win rate rises from 11% when 2+ Pokemon behind on team HP to 92% when 2+ ahead.
+Rows are 51.6% wins rather than 50%, because players who end up winning have slightly more
+non-forced decision points.
+## 2026-11-22: How we test on the public ladder (A8 #82, Raghav with Claude)
+**Decision:** `scripts/play_ladder.py` plays one game at a time on the official
+gen9randombattle ladder from a dedicated bot account whose name and password are environment
+variables on Raghav's laptop. We record each game's result and Elo before and after (read from
+the server's rating line, because poke-env keeps only the "before" number), and save replays
+and explanation logs in `data/` (git-ignored, since they name other players). Only a summary with
+no usernames (wins, Wilson interval, rating path, mean opponent rating) goes to `reports/`.
+`--local` rehearses the same loop on the local server against the heuristics bot.
+**Alternatives:** only bot-vs-bot games on the local server; several games at once; committing
+per-game logs.
+**Why:** people are the target the opponent model was trained on, so the ladder is the real
+test; the heuristics bot stays the fast, repeatable yardstick during development. One game at a
+time keeps us a good citizen on the public server. A 2-game local rehearsal recorded 1000 ->
+1045 -> 1034 correctly.
+
 ## 2026-11-22: Seven belief-based features for non-damaging threats (D7 #90, Raghav with Claude)
 **Decision:** add seven features computed from the beliefs about the acting player's moves: the
 expected number of Status moves in its set; the most likely status-inflicting move that could
