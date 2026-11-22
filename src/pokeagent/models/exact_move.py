@@ -186,7 +186,9 @@ def build_pairs(decision_points=DECISION_POINTS_PATH, splits=SPLITS_PATH, out=PA
 def _normalise(table: pd.DataFrame, scores: np.ndarray) -> np.ndarray:
     """Scores -> probabilities that sum to 1 within each decision (marker rows get FLOOR)."""
     scores = np.where(table["missing"].to_numpy(), 0.0, scores)
-    sums = pd.Series(scores).groupby(table["decision"].to_numpy()).transform("sum").to_numpy()
+    decision = table["decision"]
+    keys = decision.cat.codes.to_numpy() if decision.dtype == "category" else decision.to_numpy()
+    sums = pd.Series(scores).groupby(keys).transform("sum").to_numpy()
     probs = np.divide(scores, sums, out=np.zeros_like(scores), where=sums > 0)
     return np.where(table["missing"].to_numpy(), FLOOR, np.maximum(probs, FLOOR))
 
@@ -194,7 +196,9 @@ def _normalise(table: pd.DataFrame, scores: np.ndarray) -> np.ndarray:
 def evaluate_moves(table: pd.DataFrame, probs: np.ndarray) -> dict:
     """Top-1 / top-3 accuracy, log loss of the used move, and candidate coverage."""
     frame = table[["decision", "chosen", "missing"]].assign(p=probs)
-    frame["rank"] = frame.groupby("decision")["p"].rank(ascending=False, method="first")
+    frame["rank"] = frame.groupby("decision", observed=True)["p"].rank(
+        ascending=False, method="first"
+    )
     used = frame[frame["chosen"]]
     real = ~used["missing"]
     return {
@@ -203,15 +207,20 @@ def evaluate_moves(table: pd.DataFrame, probs: np.ndarray) -> dict:
         "top1": float(((used["rank"] == 1) & real).mean()),
         "top3": float(((used["rank"] <= 3) & real).mean()),
         "log_loss": float(-np.log(used["p"]).mean()),
-        "mean_candidates": float(frame.groupby("decision").size().mean()),
+        "mean_candidates": float(frame.groupby("decision", observed=True).size().mean()),
     }
 
 
 def train_and_report() -> dict:
     import lightgbm as lgb
 
-    table = pd.read_parquet(PAIRS_PATH)
-    table = table[table["split"].isin(["train", "val"])]  # test is not read here
+    columns = [*PAIR_FEATURES, "decision", "chosen", "missing", "split"]
+    # Test is never read here. float32 and categories keep 3.5 million rows small.
+    table = pd.read_parquet(
+        PAIRS_PATH, columns=columns, filters=[("split", "in", ["train", "val"])]
+    )
+    table[list(PAIR_FEATURES)] = table[list(PAIR_FEATURES)].astype("float32")
+    table["decision"] = table["decision"].astype("category")
     train, val = table[table["split"] == "train"], table[table["split"] == "val"]
     fit_train, fit_val = train[~train["missing"]], val[~val["missing"]]
     model = lgb.LGBMClassifier(
