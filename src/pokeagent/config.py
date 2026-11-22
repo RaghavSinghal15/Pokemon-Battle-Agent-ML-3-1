@@ -22,6 +22,8 @@ FEATURES_PATH = PROCESSED_DIR / "features.parquet"
 # label bias in the opponent model (E4), never as labelled examples.
 HIDDEN_POINTS_PATH = PROCESSED_DIR / "hidden_points.parquet"
 HIDDEN_FEATURES_PATH = PROCESSED_DIR / "hidden_features.parquet"
+# Exact-move model (E6): one row per (decision where a move was used, candidate move).
+MOVE_PAIRS_PATH = PROCESSED_DIR / "move_pairs.parquet"
 # Value model (V1): one row per decision point, labelled with whether that player won.
 VALUE_FEATURES_PATH = PROCESSED_DIR / "value_features.parquet"
 
