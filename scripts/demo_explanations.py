@@ -3,6 +3,7 @@ decision's reasoning.
 
 With the local server running:
     python scripts/demo_explanations.py
+    python scripts/demo_explanations.py --games 100 --quiet --out data/interim/analysis
 
 Prints each turn's explanation (matchup, beliefs about the opponent's set, the opponent
 forecast, every option's score and the choice) and saves it, with the game's replay, to
@@ -13,6 +14,7 @@ import argparse
 import asyncio
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 from poke_env import AccountConfiguration
 
@@ -38,17 +40,17 @@ class _Tee:
             stream.flush()
 
 
-async def main(games: int) -> None:
+async def main(games: int, out: Path, quiet: bool = False) -> None:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-    EXAMPLES_DIR.mkdir(parents=True, exist_ok=True)
-    log_path = EXAMPLES_DIR / f"demo-{stamp}.log"
+    out.mkdir(parents=True, exist_ok=True)
+    log_path = out / f"demo-{stamp}.log"
     with log_path.open("w", encoding="utf-8") as log:
         agent = build_agent(
             "full",
             account_configuration=AccountConfiguration(f"demo{stamp[-6:]}", None),
             battle_format=BATTLE_FORMAT,
-            explanation_stream=_Tee(sys.stdout, log),
-            save_replays=str(EXAMPLES_DIR),
+            explanation_stream=log if quiet else _Tee(sys.stdout, log),
+            save_replays=str(out),
         )
         opponent = BASELINES["heuristics"](
             account_configuration=AccountConfiguration(f"demoopp{stamp[-6:]}", None),
@@ -63,4 +65,7 @@ async def main(games: int) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--games", type=int, default=1)
-    asyncio.run(main(parser.parse_args().games))
+    parser.add_argument("--out", type=Path, default=EXAMPLES_DIR)
+    parser.add_argument("--quiet", action="store_true", help="write the log without printing")
+    args = parser.parse_args()
+    asyncio.run(main(args.games, args.out, args.quiet))
