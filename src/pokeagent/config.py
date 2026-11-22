@@ -90,10 +90,12 @@ PAYOFF_FREEZE_ACT_CHANCE = 0.2
 # Lasting effects (stat changes, status, hazards) are valued as the change they make to next
 # turn's table value, times this many turns. Tuned in games (docs/decisions.md, F8).
 PAYOFF_EFFECT_TURNS = 1.0
-# Entry hazards are valued as the entry damage they will cost every remaining Pokemon on that
-# side (each must switch in at least once to be used), times this discount for those that
-# never come in before the game ends.
-PAYOFF_HAZARD_WEIGHT = 0.5
+# Entry hazards are valued as the entry damage one switch-in costs every remaining Pokemon on
+# that side, times this weight: how many more times each of them is expected to come in. In our
+# training replays a Pokemon that still has to enter does so 1.6 times after turn 1 (1.3 after
+# turn 20); Heavy-Duty Boots and hazard removal (Rapid Spin, Defog) cancel some of that, so we
+# use 1.0. (Before measuring, this was a guessed 0.5.)
+PAYOFF_HAZARD_WEIGHT = 1.0
 RANDOM_BATTLE_TEAM_SIZE = 6
 
 # Local Showdown server started with `node pokemon-showdown start --no-security`.

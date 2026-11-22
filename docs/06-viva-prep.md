@@ -41,6 +41,33 @@ only their own part. Practise answering out loud, in your own words, without not
 23. What didn't work, and why? Show a game the agent lost and explain the mistake.
 24. What would you do next with more time?
 
+**Version 2: what we added and why** (answers in [decisions.md](decisions.md) and
+[the report](../reports/report.md))
+25. 10% of human turns never show the choice. Why did dropping them bias the switch forecast,
+    and how does a fourth "hidden" class fix it without a separate calibration step?
+26. Why is log loss on visible turns only the wrong metric for choosing the opponent model?
+    What does the all-turns log loss score on a hidden turn?
+27. The forecast improved a lot with the belief threat features (D7), but the win rate barely
+    moved. Why? What did that tell us to work on next?
+28. How is a Swords Dance valued in the payoff table? Why is it worth nothing if we are about
+    to be knocked out, and how does the code know that?
+29. Why do entry hazards need their own valuation instead of the one-turn lookahead? Where does
+    the hazard weight of 1.0 come from?
+30. What is the value model, what is its label, and why can't the label ever be a feature?
+31. Why score the payoff table by the change in win probability instead of HP? Give a game
+    situation where 30% HP is worth very different amounts.
+32. Why use the logistic-regression value model in the table when LightGBM had lower log loss?
+33. Every row of a table must be measured from the same P(win now). What goes wrong if each
+    row uses its own starting position?
+34. What did the GRU over the whole game show, and why do boosted trees still win here?
+    How do you know the GRU cannot see the future?
+35. Why did the play-style feature make the forecast worse? Why cluster on five shares, not six?
+36. How does the exact-move model work, and why score (position, move) pairs instead of one
+    classifier over all moves?
+37. What are the puzzles for, if we already have win rates? Which bug did they find?
+38. How do you test on the public ladder without breaking the rules or publishing other
+    players' names?
+
 ## Each owner must additionally defend their own module in depth
 
 Expect "why did you do it this way and not that way?" for every design choice, which is why

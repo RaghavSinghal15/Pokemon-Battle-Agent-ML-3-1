@@ -1,0 +1,127 @@
+Battle battle-gen9randombattle-14799 | Turn 1: poliwrath (100%) vs munkidori (100%)
+Beliefs: AV Pivot 50%, Fast Attacker 50%
+Opponent forecast: attack 90%, non_damaging 5%, switch 5%
+Expected row payoffs after impossible-class renormalisation: move:liquidation +0.072 | move:raindance -0.057 | move:knockoff +0.161 | move:closecombat -0.038 | switch:vikavolt -0.035 | switch:rhydon +0.014 | switch:mandibuzz +0.022 | switch:delphox -0.002 | switch:toxtricity -0.061
+Chose move:knockoff: Best response chooses move:knockoff with expected payoff +0.161 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 48%): +0.050 means 5 points more likely to win.
+
+Battle battle-gen9randombattle-14799 | Turn 2: poliwrath (4%) vs munkidori (15%)
+Beliefs: Fast Attacker 100%
+Opponent forecast: attack 88%, non_damaging 2%, switch 10%
+Expected row payoffs after impossible-class renormalisation: move:liquidation -0.046 | move:raindance -0.053 | move:knockoff -0.046 | move:closecombat -0.046 | switch:vikavolt +0.003 | switch:rhydon +0.056 | switch:mandibuzz +0.065 | switch:delphox +0.038 | switch:toxtricity -0.041
+Chose switch:mandibuzz: Best response chooses switch:mandibuzz with expected payoff +0.065 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 47%): +0.050 means 5 points more likely to win.
+
+Battle battle-gen9randombattle-14799 | Turn 3: mandibuzz (100%) vs munkidori (15%)
+Beliefs: Fast Attacker 100%
+Opponent forecast: attack 38%, non_damaging 2%, switch 61%
+Expected row payoffs after impossible-class renormalisation: move:knockoff -0.006 | move:roost -0.029 | move:bravebird -0.010 | move:defog -0.040 | switch:vikavolt -0.083 | switch:rhydon -0.041 | switch:poliwrath -0.144 | switch:delphox -0.056 | switch:toxtricity -0.117
+Chose move:knockoff: Best response chooses move:knockoff with expected payoff -0.006 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 57%): +0.050 means 5 points more likely to win.
+
+Battle battle-gen9randombattle-14799 | Turn 4: mandibuzz (61%) vs wigglytuff (100%)
+Beliefs: Bulky Support 100%
+Opponent forecast: attack 80%, non_damaging 19%, switch 1%
+Expected row payoffs after impossible-class renormalisation: move:knockoff -0.076 | move:roost -0.005 | move:bravebird -0.055 | move:defog -0.101 | switch:vikavolt -0.055 | switch:rhydon -0.017 | switch:poliwrath -0.078 | switch:delphox -0.001 | switch:toxtricity +0.029
+Chose switch:toxtricity: Best response chooses switch:toxtricity with expected payoff +0.029 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 44%): +0.050 means 5 points more likely to win.
+
+Battle battle-gen9randombattle-14799 | Turn 5: toxtricity (88%) vs wigglytuff (100%)
+Beliefs: Bulky Support 100%
+Opponent forecast: attack 26%, non_damaging 14%, switch 60%
+Expected row payoffs after impossible-class renormalisation: move:overdrive +0.014 | move:shiftgear +0.019 | move:boomburst +0.018 | move:gunkshot +0.034 | switch:vikavolt -0.056 | switch:rhydon -0.045 | switch:poliwrath -0.100 | switch:delphox -0.021 | switch:mandibuzz -0.092
+Chose move:gunkshot: Best response chooses move:gunkshot with expected payoff +0.034 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 49%): +0.050 means 5 points more likely to win.
+
+Battle battle-gen9randombattle-14799 | Turn 6: toxtricity (75%) vs wigglytuff (21%)
+Beliefs: Bulky Support 100%
+Opponent forecast: attack 32%, non_damaging 38%, switch 29%
+Expected row payoffs after impossible-class renormalisation: move:overdrive +0.034 | move:shiftgear -0.019 | move:boomburst +0.034 | move:gunkshot +0.023 | switch:vikavolt -0.059 | switch:rhydon -0.045 | switch:poliwrath -0.099 | switch:delphox -0.025 | switch:mandibuzz -0.094
+Chose move:overdrive: Best response chooses move:overdrive with expected payoff +0.034 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 70%): +0.050 means 5 points more likely to win.
+
+Battle battle-gen9randombattle-14799 | Turn 7: toxtricity (75%) vs lugia (100%)
+Beliefs: Bulky Setup 50%, Setup Sweeper 50%
+Opponent forecast: attack 68%, non_damaging 30%, switch 2%
+Expected row payoffs after impossible-class renormalisation: move:overdrive +0.080 | move:shiftgear -0.026 | move:boomburst +0.015 | move:gunkshot -0.022 | switch:vikavolt -0.046 | switch:rhydon -0.040 | switch:poliwrath -0.150 | switch:delphox -0.058 | switch:mandibuzz -0.051
+Chose move:overdrive: Best response chooses move:overdrive with expected payoff +0.080 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 67%): +0.050 means 5 points more likely to win.
+
+Battle battle-gen9randombattle-14799 | Turn 8: toxtricity (48%) vs lugia (49%)
+Beliefs: Setup Sweeper 100%
+Opponent forecast: attack 73%, non_damaging 21%, switch 6%
+Expected row payoffs after impossible-class renormalisation: move:overdrive +0.080 | move:shiftgear -0.020 | move:boomburst +0.072 | move:gunkshot +0.007 | switch:vikavolt -0.047 | switch:rhydon -0.029 | switch:poliwrath -0.140 | switch:delphox -0.042 | switch:mandibuzz -0.042
+Chose move:overdrive: Best response chooses move:overdrive with expected payoff +0.080 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 72%): +0.050 means 5 points more likely to win.
+
+Battle battle-gen9randombattle-14799 | Turn 9: toxtricity (20%) vs klawf (100%)
+Beliefs: Fast Attacker 50%, Setup Sweeper 50%
+Opponent forecast: attack 78%, non_damaging 21%, switch 1%
+Expected row payoffs after impossible-class renormalisation: move:overdrive -0.034 | move:shiftgear -0.043 | move:boomburst -0.043 | move:gunkshot -0.055 | switch:vikavolt -0.070 | switch:rhydon -0.003 | switch:poliwrath -0.040 | switch:delphox -0.112 | switch:mandibuzz -0.066
+Chose switch:rhydon: Best response chooses switch:rhydon with expected payoff -0.003 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 80%): +0.050 means 5 points more likely to win.
+
+Battle battle-gen9randombattle-14799 | Turn 10: rhydon (75%) vs klawf (100%)
+Beliefs: Fast Attacker 50%, Setup Sweeper 50%
+Opponent forecast: attack 27%, non_damaging 19%, switch 54%
+Expected row payoffs after impossible-class renormalisation: move:megahorn +0.005 | move:stoneedge +0.007 | move:earthquake +0.033 | move:stealthrock +0.001 | switch:vikavolt -0.058 | switch:toxtricity -0.067 | switch:poliwrath -0.037 | switch:delphox -0.064 | switch:mandibuzz -0.065
+Chose move:earthquake: Best response chooses move:earthquake with expected payoff +0.033 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 79%): +0.050 means 5 points more likely to win.
+
+Battle battle-gen9randombattle-14799 | Turn 10: switch:poliwrath; Forced replacement by matchup: poliwrath scores best next turn (poliwrath +0.304, vikavolt +0.282, mandibuzz +0.250, delphox +0.161, toxtricity +0.071).
+
+Battle battle-gen9randombattle-14799 | Turn 11: poliwrath (4%) vs klawf (100%)
+Beliefs: Fast Attacker 50%, Setup Sweeper 50%
+Opponent forecast: attack 89%, non_damaging 3%, switch 7%
+Expected row payoffs after impossible-class renormalisation: move:liquidation -0.045 | move:raindance -0.061 | move:knockoff -0.054 | move:closecombat -0.039 | switch:vikavolt -0.086 | switch:toxtricity -0.119 | switch:delphox -0.150 | switch:mandibuzz -0.083
+Chose move:closecombat: Best response chooses move:closecombat with expected payoff -0.039 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 58%): +0.050 means 5 points more likely to win.
+
+Battle battle-gen9randombattle-14799 | Turn 11: switch:vikavolt; Forced replacement by matchup: vikavolt scores best next turn (vikavolt +0.282, mandibuzz +0.250, delphox +0.161, toxtricity +0.071).
+
+Battle battle-gen9randombattle-14799 | Turn 12: vikavolt (100%) vs klawf (100%)
+Beliefs: Fast Attacker 50%, Setup Sweeper 50%
+Opponent forecast: attack 55%, non_damaging 7%, switch 38%
+Expected row payoffs after impossible-class renormalisation: move:voltswitch +0.024 | move:bugbuzz +0.040 | move:thunderbolt +0.040 | move:stickyweb -0.038 | switch:toxtricity -0.060 | switch:delphox -0.071 | switch:mandibuzz -0.047
+Chose move:bugbuzz: Best response chooses move:bugbuzz with expected payoff +0.040 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 47%): +0.050 means 5 points more likely to win.
+
+Battle battle-gen9randombattle-14799 | Turn 13: vikavolt (11%) vs klawf (38%)
+Beliefs: Setup Sweeper 100%
+Opponent forecast: attack 93%, non_damaging 2%, switch 5%
+Expected row payoffs after impossible-class renormalisation: move:voltswitch -0.002 | move:bugbuzz -0.002 | move:thunderbolt -0.002 | move:stickyweb -0.053 | switch:toxtricity -0.063 | switch:delphox -0.163 | switch:mandibuzz -0.042
+Chose move:voltswitch: Best response chooses move:voltswitch with expected payoff -0.002 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 39%): +0.050 means 5 points more likely to win.
+
+Battle battle-gen9randombattle-14799 | Turn 13: switch:delphox; Fallback: forced replacement could not be scored: PayoffUnavailable: No replacement could be scored; toxtricity: Both active Pokemon must be alive and revealed; delphox: Both active Pokemon must be alive and revealed; mandibuzz: Both active Pokemon must be alive and revealed; healthiest legal replacement.
+
+Battle battle-gen9randombattle-14799 | Turn 14: delphox (100%) vs honchkrow (100%)
+Beliefs: Fast Attacker 50%, Wallbreaker 50%
+Opponent forecast: attack 86%, non_damaging 9%, switch 5%
+Expected row payoffs after impossible-class renormalisation: move:nastyplot +0.028 | move:psyshock -0.096 | move:grassknot -0.074 | move:fireblast +0.004 | switch:toxtricity -0.069 | switch:vikavolt -0.066 | switch:mandibuzz -0.039
+Chose move:nastyplot: Best response chooses move:nastyplot with expected payoff +0.028 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 63%): +0.050 means 5 points more likely to win.
+
+Battle battle-gen9randombattle-14799 | Turn 15: delphox (15%) vs honchkrow (100%)
+Beliefs: Wallbreaker 100%
+Opponent forecast: attack 85%, non_damaging 7%, switch 8%
+Expected row payoffs after impossible-class renormalisation: move:nastyplot -0.090 | move:psyshock -0.090 | move:grassknot -0.056 | move:fireblast +0.122 | switch:toxtricity -0.111 | switch:vikavolt -0.100 | switch:mandibuzz -0.060
+Chose move:fireblast: Best response chooses move:fireblast with expected payoff +0.122 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 50%): +0.050 means 5 points more likely to win.
+
+Battle battle-gen9randombattle-14799 | Turn 16: delphox (15%) vs komala (100%)
+Beliefs: Bulky Support 100%
+Opponent forecast: attack 100%, non_damaging 0%, switch 0%
+Expected row payoffs after impossible-class renormalisation: move:nastyplot -0.142 | move:psyshock +0.004 | move:grassknot -0.099 | move:fireblast +0.171 | switch:toxtricity -0.184 | switch:vikavolt -0.173 | switch:mandibuzz -0.109
+Chose move:fireblast: Best response chooses move:fireblast with expected payoff +0.171 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 77%): +0.050 means 5 points more likely to win.
+
+Battle battle-gen9randombattle-14799 | Turn 16: switch:toxtricity; Forced replacement by matchup: toxtricity scores best next turn (toxtricity +0.370, mandibuzz +0.307, vikavolt -0.215).
+
+Battle battle-gen9randombattle-14799 | Turn 17: toxtricity (20%) vs komala (12%)
+Beliefs: Bulky Support 100%
+Opponent forecast: attack 100%, non_damaging 0%, switch 0%
+Expected row payoffs after impossible-class renormalisation: move:overdrive +0.211 | move:shiftgear -0.126 | move:boomburst +0.211 | move:gunkshot +0.144 | switch:vikavolt -0.116 | switch:mandibuzz -0.060
+Chose move:overdrive: Best response chooses move:overdrive with expected payoff +0.211 using the supplied opponent probabilities.
+Payoffs are changes in our predicted win probability this turn (now 79%): +0.050 means 5 points more likely to win.
+

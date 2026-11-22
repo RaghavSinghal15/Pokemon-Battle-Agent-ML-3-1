@@ -136,7 +136,7 @@ class ExplainableAgent(Player):
         self.last_decision = decision
         self.decision_counts[decision.strategy] += 1
         if context is not None:
-            text = format_turn(*context, decision)
+            text = format_turn(*context)
         else:
             text = (
                 f"Battle {battle.battle_tag} | Turn {battle.turn}: "
@@ -224,7 +224,10 @@ class ExplainableAgent(Player):
                 if self.strategy == "best_response"
                 else minimax_lp(table, rng=self.rng)
             )
-            context = (state, beliefs, forecast, table) if self.mode == "model" else None
+            context = None
+            if self.mode == "model":
+                now = scorer.win_probability() if scorer is not None else None
+                context = (state, beliefs, forecast, table, decision, now)
             return self._record(battle, decision, context)
         except (PayoffUnavailable, ValueError, RuntimeError) as error:
             return self._fallback(battle, f"{type(error).__name__}: {error}")
