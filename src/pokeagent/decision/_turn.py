@@ -24,6 +24,12 @@ class TurnEffect:
     future: float = 0.0
     future_needs_user: bool = False
     future_needs_target: bool = False
+    # F11. drain / recoil: HP the user gains / loses per unit of damage dealt, both already in
+    # the user's max-HP fractions (Giga Drain heals half the damage, Brave Bird loses a third).
+    drain: float = 0.0
+    recoil: float = 0.0
+    substitute: bool = False  # the user puts up a Substitute (costs 1/4 of its max HP)
+    blocked_by_substitute: bool = True  # False for moves that ignore it (sound, self-targeted)
 
     def outcomes(self) -> list[tuple[float, float, float, bool, bool, bool]]:
         """Branch on inability to act, then miss/low/high; self-KO requires an attempt.
@@ -33,7 +39,16 @@ class TurnEffect:
         low, high = self.damage
         if not all(
             math.isfinite(x)
-            for x in (low, high, self.hit_chance, self.heal, self.act_chance, self.future)
+            for x in (
+                low,
+                high,
+                self.hit_chance,
+                self.heal,
+                self.act_chance,
+                self.future,
+                self.drain,
+                self.recoil,
+            )
         ):
             raise ValueError("Move effects must be finite")
         if (
@@ -41,6 +56,8 @@ class TurnEffect:
             or not 0 <= self.hit_chance <= 1
             or not 0 <= self.heal <= 1
             or not 0 <= self.act_chance <= 1
+            or self.drain < 0
+            or self.recoil < 0
         ):
             raise ValueError("Invalid move effect range or probability")
         hit = self.act_chance * self.hit_chance / 2
@@ -60,17 +77,22 @@ def turn_value(
     our_first: float,
     entry_losses: tuple[float, float] = (0.0, 0.0),
     ko_bonus: float = PAYOFF_KO_BONUS,
+    residuals: tuple[float, float] = (0.0, 0.0),
+    substitutes: tuple[float, float] = (0.0, 0.0),
 ) -> float:
     """Average utility after HP capping, KO cancellation and hit/miss/order branches.
 
-    Entry losses happen first. This scoring approximation is not a battle simulator.
+    Entry losses happen first. residuals are each side's end-of-turn HP change (Leftovers
+    +1/16, burn -1/16 ...), applied to a Pokemon still standing. substitutes are the HP left in
+    each side's existing Substitute. This scoring approximation is not a battle simulator.
     """
-    if not all(math.isfinite(x) for x in (our_hp, opp_hp, our_first, *entry_losses, ko_bonus)):
+    numbers = (our_hp, opp_hp, our_first, *entry_losses, ko_bonus, *residuals, *substitutes)
+    if not all(math.isfinite(x) for x in numbers):
         raise ValueError("Turn inputs must be finite")
     if not (0 < our_hp <= 1 and 0 < opp_hp <= 1 and 0 <= our_first <= 1):
         raise ValueError("Invalid starting HP or order probability")
-    if min(*entry_losses, ko_bonus) < 0:
-        raise ValueError("Entry damage and KO bonus must be non-negative")
+    if min(*entry_losses, ko_bonus, *substitutes) < 0:
+        raise ValueError("Entry damage, KO bonus and Substitute HP must be non-negative")
     value = 0.0
     for first, order_probability in ((0, our_first), (1, 1 - our_first)):
         for our_outcome, opp_outcome in product(ours.outcomes(), theirs.outcomes()):
@@ -82,6 +104,7 @@ def turn_value(
             hp = [hp[i] - lost[i] for i in (0, 1)]
             recovered, protected = [0.0, 0.0], [False, False]
             landed = [False, False]
+            sub = list(substitutes)
             results, effects = [our_outcome, opp_outcome], [ours, theirs]
             for actor in (first, 1 - first):
                 target = 1 - actor
@@ -90,18 +113,44 @@ def turn_value(
                 _, damage, heal, protection, self_ko, hit = results[actor]
                 protected[actor] = protection
                 dealt = 0.0
-                blocked = protected[target] and effects[actor].blocked_by_protect
-                landed[actor] = hit and not blocked
-                if not blocked:
+                effect = effects[actor]
+                blocked = protected[target] and effect.blocked_by_protect
+                # A Substitute takes the hit instead of the Pokemon, and stops effects aimed at it.
+                behind_sub = hit and sub[target] > 0 and effect.blocked_by_substitute
+                landed[actor] = (
+                    hit and not blocked and not (behind_sub and effect.future_needs_target)
+                )
+                if behind_sub and not blocked:
+                    sub[target] = max(0.0, sub[target] - damage)
+                elif not blocked:
                     dealt = min(hp[target], damage)
                 hp[target] -= dealt
                 lost[target] += dealt
-                restored = min(1 - hp[actor], heal)
+                restored = min(1 - hp[actor], heal + effect.drain * dealt)
                 hp[actor] += restored
                 recovered[actor] += restored
+                recoil = min(hp[actor], effect.recoil * dealt)
+                hp[actor] -= recoil
+                lost[actor] += recoil
+                # Substitute: fails at 1/4 HP or below, or if one is already up.
+                if effect.substitute and hit and sub[actor] == 0 and hp[actor] > 0.25:
+                    hp[actor] -= 0.25
+                    lost[actor] += 0.25
+                    sub[actor] = 0.25
                 if self_ko:
                     lost[actor] += hp[actor]
                     hp[actor] = 0.0
+            for side in (0, 1):
+                if hp[side] <= 0 or residuals[side] == 0:
+                    continue
+                if residuals[side] > 0:
+                    restored = min(1 - hp[side], residuals[side])
+                    hp[side] += restored
+                    recovered[side] += restored
+                else:
+                    taken = min(hp[side], -residuals[side])
+                    hp[side] -= taken
+                    lost[side] += taken
             utility = lost[1] - lost[0] + recovered[0] - recovered[1]
             utility += ko_bonus * (int(hp[1] <= 0) - int(hp[0] <= 0))
             for actor, effect in ((0, ours), (1, theirs)):
