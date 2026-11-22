@@ -10,6 +10,7 @@ import pytest
 from poke_env.data import GenData
 from test_interfaces import make_state
 
+from pokeagent.beliefs import tracker
 from pokeagent.features.value import (
     LABEL,
     VALUE_FEATURE_NAMES,
@@ -17,6 +18,14 @@ from pokeagent.features.value import (
     position_features,
 )
 from pokeagent.interfaces import FieldView, PokemonView
+
+
+@pytest.fixture(autouse=True)
+def public_sets(tmp_path, monkeypatch):
+    """An empty stand-in sets file, so these tests need no Showdown checkout (as in CI)."""
+    path = tmp_path / "sets.json"
+    path.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(tracker, "RANDOM_BATTLE_SETS_PATH", path)
 
 
 @pytest.fixture(scope="module")
