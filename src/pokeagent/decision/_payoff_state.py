@@ -2,6 +2,7 @@
 
 import math
 from copy import copy, deepcopy
+from dataclasses import dataclass
 
 from poke_env.battle import (
     Battle,
@@ -15,6 +16,7 @@ from poke_env.battle import (
     Weather,
 )
 from poke_env.calc.damage_calc_gen9 import calculate_damage
+from poke_env.data import to_id_str
 
 from pokeagent.config import PAYOFF_FREEZE_ACT_CHANCE, PAYOFF_SLEEP_ACT_CHANCE
 from pokeagent.decision._turn import TurnEffect
@@ -137,7 +139,15 @@ def move_effect(
             protect=True, hit_chance=1 / (3**attacker.protect_counter), act_chance=can_act
         )
     if move.category == MoveCategory.STATUS:
-        return TurnEffect(heal=move.heal, act_chance=can_act)
+        # Protect blocks status moves aimed at the target, not ones the user uses on itself.
+        aimed_at_self = to_id_str(str(move.target).split()[0]) in _SELF_TARGETS
+        accuracy = 1.0 if aimed_at_self or move.entry.get("accuracy") is True else move.accuracy
+        return TurnEffect(
+            heal=move.heal,
+            act_chance=can_act,
+            hit_chance=accuracy,
+            blocked_by_protect=not aimed_at_self,
+        )
     if move.entry.get("flags", {}).get("charge"):
         # A conservative first-charge-turn approximation, even with weather/Power Herb.
         return TurnEffect()
@@ -166,3 +176,169 @@ def move_effect(
         blocked_by_protect=bool(move.entry.get("flags", {}).get("protect"))
         and not move.breaks_protect,
     )
+
+
+# ---------------------------------------------------------------------------------------
+# Lasting effects (F8, F9, F10): what a move leaves behind for later turns.
+
+_SELF_TARGETS = {"self", "allyside", "allies", "adjacentallyorself", "allyteam", "all"}
+_HAZARD_LAYERS = {
+    SideCondition.STEALTH_ROCK: 1,
+    SideCondition.SPIKES: 3,
+    SideCondition.TOXIC_SPIKES: 2,
+    SideCondition.STICKY_WEB: 1,
+}
+# Moves that clear hazards: from the user's side only, or from both sides.
+_HAZARD_REMOVAL = {"rapidspin": "own", "mortalspin": "own", "tidyup": "both", "defog": "both"}
+# Types that can never get a status (Electric: paralysis; Fire: burn; Poison/Steel: poison).
+_STATUS_IMMUNE_TYPES = {
+    Status.PAR: {PokemonType.ELECTRIC},
+    Status.BRN: {PokemonType.FIRE},
+    Status.PSN: {PokemonType.POISON, PokemonType.STEEL},
+    Status.TOX: {PokemonType.POISON, PokemonType.STEEL},
+}
+# Known abilities that stop a status move (only applied when the ability is known).
+_STATUS_BLOCKING_ABILITIES = {"goodasgold", "magicbounce", "purifyingsalt", "comatose"}
+_STATUS_ABILITY_IMMUNITY = {
+    Status.PAR: {"limber"},
+    Status.BRN: {"waterveil", "waterbubble", "thermalexchange"},
+    Status.PSN: {"immunity", "pastelveil"},
+    Status.TOX: {"immunity", "pastelveil"},
+    Status.SLP: {"insomnia", "vitalspirit", "sweetveil"},
+}
+
+
+@dataclass(frozen=True)
+class LastingEffect:
+    """A copy of the battle after a move's lasting effect, and what the effect depends on."""
+
+    battle: Battle
+    needs_user: bool  # the user's own stat changes vanish if it faints
+    needs_target: bool  # status or stat drops on the target vanish if it faints
+    changes_pokemon: bool = True  # stat changes or status (valued by looking one turn ahead)
+    changes_field: bool = False  # hazards set or removed (valued over the remaining Pokemon)
+
+
+def _status_can_land(target: Pokemon, status: Status, move: Move) -> bool:
+    if target.status is not None:
+        return False
+    types = set(target.types)
+    if types & _STATUS_IMMUNE_TYPES.get(status, set()):
+        return False
+    if move.entry.get("flags", {}).get("powder") and PokemonType.GRASS in types:
+        return False
+    if (
+        move.category == MoveCategory.STATUS
+        and not move.entry.get("ignoreImmunity")
+        and target.damage_multiplier(move.type) == 0
+    ):
+        return False  # Thunder Wave into a Ground type
+    ability = target.ability
+    return not (
+        ability in _STATUS_BLOCKING_ABILITIES and move.category == MoveCategory.STATUS
+    ) and ability not in _STATUS_ABILITY_IMMUNITY.get(status, set())
+
+
+def _boost(mon: Pokemon, changes: dict | None) -> bool:
+    changed = False
+    for stat, delta in (changes or {}).items():
+        if stat not in mon._boosts:
+            continue
+        new = max(-6, min(6, mon._boosts[stat] + delta))
+        changed |= new != mon._boosts[stat]
+        mon._boosts[stat] = new
+    return changed
+
+
+def lasting_effect(
+    battle: Battle, user_key: str, target_key: str, move: Move
+) -> LastingEffect | None:
+    """Apply what `move` leaves behind to a copy of the battle; None if it leaves nothing.
+
+    Covered: stat changes on the user (Swords Dance, Draco Meteor's drop, Flame Charge) or the
+    target (Charm, Icy Wind); a status from a status move (Thunder Wave, Will-O-Wisp, Toxic,
+    Spore), respecting immunities; entry hazards (Stealth Rock, Spikes ...); hazard removal.
+    Only effects that are certain when the move hits (chance 100) are applied.
+    """
+    ours = user_key in battle.team
+    result = copy(battle)
+    result._team, result._opponent_team = deepcopy(battle.team), deepcopy(battle.opponent_team)
+    result._side_conditions = dict(battle.side_conditions)
+    result._opponent_side_conditions = dict(battle.opponent_side_conditions)
+    user, target = result.get_pokemon(user_key), result.get_pokemon(target_key)
+    own_side = result._side_conditions if ours else result._opponent_side_conditions
+    foe_side = result._opponent_side_conditions if ours else result._side_conditions
+    status_move = move.category == MoveCategory.STATUS
+    aimed_at_self = to_id_str(str(move.target).split()[0]) in _SELF_TARGETS
+    user_changed = target_changed = field_changed = False
+
+    # Stat changes.
+    if status_move and aimed_at_self:
+        user_changed |= _boost(user, move.boosts)
+    elif status_move:
+        target_changed |= _boost(target, move.boosts)
+    user_changed |= _boost(user, move.self_boost)
+    for secondary in move.secondary or []:
+        if secondary.get("chance", 0) < 100:
+            continue
+        user_changed |= _boost(user, secondary.get("self", {}).get("boosts"))
+        target_changed |= _boost(target, secondary.get("boosts"))
+
+    # Status from a status move.
+    if status_move and move.status is not None and _status_can_land(target, move.status, move):
+        target._status = move.status
+        target_changed = True
+
+    # Entry hazards on the foe's side, and hazard removal.
+    condition = move.side_condition
+    if condition in _HAZARD_LAYERS and foe_side.get(condition, 0) < _HAZARD_LAYERS[condition]:
+        foe_side[condition] = foe_side.get(condition, 0) + 1
+        field_changed = True
+    sides = {"own": (own_side,), "both": (own_side, foe_side)}.get(_HAZARD_REMOVAL.get(move.id), ())
+    for side in sides:
+        for hazard in _HAZARD_LAYERS:
+            if side.pop(hazard, None) is not None:
+                field_changed = True
+
+    if not (user_changed or target_changed or field_changed):
+        return None
+    return LastingEffect(
+        result,
+        needs_user=user_changed and not (target_changed or field_changed),
+        needs_target=target_changed and not (user_changed or field_changed),
+        changes_pokemon=user_changed or target_changed,
+        changes_field=field_changed,
+    )
+
+
+# Entry damage for a Pokemon we have not seen yet: neutral to Stealth Rock, grounded.
+def _unseen_entry_damage(conditions: dict) -> float:
+    damage = 1 / 8 if SideCondition.STEALTH_ROCK in conditions else 0.0
+    layers = conditions.get(SideCondition.SPIKES, 0)
+    return damage + (0, 1 / 8, 1 / 6, 1 / 4)[min(layers, 3)]
+
+
+def hazard_value(before: Battle, after: Battle, unseen_opponents: int) -> float:
+    """Change in hazard damage still to come, as HP fractions summed over the Pokemon that
+    have yet to switch in (positive = good for us).
+
+    Each remaining reserve must switch in at least once to be used, so each pays the entry
+    damage once. Unseen opponents are counted with neutral damage. Current HP caps the loss.
+    """
+
+    def total(battle: Battle, ours: bool) -> float:
+        team = battle.team if ours else battle.opponent_team
+        conditions = battle.side_conditions if ours else battle.opponent_side_conditions
+        loss = 0.0
+        for mon in team.values():
+            if mon.active or mon.fainted or mon.max_hp <= 0 or mon.current_hp_fraction <= 0:
+                continue
+            probe = deepcopy(mon)
+            defaults = random_battle_stats(probe.species, probe.level)
+            probe.stats = {s: probe.stats.get(s) or v for s, v in defaults.items()}
+            loss += min(probe.current_hp_fraction, entry_damage(probe, battle, conditions))
+        if not ours:
+            loss += unseen_opponents * _unseen_entry_damage(conditions)
+        return loss
+
+    return (total(after, False) - total(before, False)) - (total(after, True) - total(before, True))

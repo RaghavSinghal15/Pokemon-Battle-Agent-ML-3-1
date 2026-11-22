@@ -82,6 +82,13 @@ SEED = 464
 PAYOFF_KO_BONUS = 0.25
 PAYOFF_SLEEP_ACT_CHANCE = 1 / 3  # Approximation; the hidden sleep timer is not inferred.
 PAYOFF_FREEZE_ACT_CHANCE = 0.2
+# Lasting effects (stat changes, status, hazards) are valued as the change they make to next
+# turn's table value, times this many turns. Tuned in games (docs/decisions.md, F8).
+PAYOFF_EFFECT_TURNS = 1.0
+# Entry hazards are valued as the entry damage they will cost every remaining Pokemon on that
+# side (each must switch in at least once to be used), times this discount for those that
+# never come in before the game ends.
+PAYOFF_HAZARD_WEIGHT = 0.5
 RANDOM_BATTLE_TEAM_SIZE = 6
 
 # Local Showdown server started with `node pokemon-showdown start --no-security`.

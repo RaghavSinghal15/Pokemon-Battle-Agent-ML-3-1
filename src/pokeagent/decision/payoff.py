@@ -2,14 +2,19 @@
 
 import math
 import warnings
+from copy import copy
+from dataclasses import replace
 
+import numpy as np
 from poke_env.battle import Battle, Move
 
-from pokeagent.config import RANDOM_BATTLE_TEAM_SIZE
+from pokeagent.config import PAYOFF_EFFECT_TURNS, PAYOFF_HAZARD_WEIGHT, RANDOM_BATTLE_TEAM_SIZE
 from pokeagent.decision._payoff_state import (
     PayoffUnavailable,
     entry_damage,
     first_probability,
+    hazard_value,
+    lasting_effect,
     move_effect,
     scenario_copy,
 )
@@ -97,13 +102,27 @@ def build_payoff_table(
     if me is None or me.fainted:
         raise PayoffUnavailable("Both active Pokemon must be alive and revealed")
     me_key = next(k for k, mon in battle.team.items() if mon is me)
+    return _table(battle, beliefs, class_probs, me_key, _rows(battle, me_key), entering=False)
+
+
+def _rows(battle: Battle, me_key: str) -> list:
+    """Our legal moves, then switches to living reserves."""
     rows = [(Action("move", m.id), me_key, m) for m in battle.available_moves]
     for mon in battle.available_switches:
         if mon.max_hp <= 0 or mon.current_hp_fraction <= 0:
             continue
         key = next(k for k, candidate in battle.team.items() if candidate is mon)
         rows.append((Action("switch", mon.species), key, None))
-    return _table(battle, beliefs, class_probs, me_key, rows, entering=False)
+    return rows
+
+
+def _table_value(table: PayoffTable) -> float:
+    """What a table is worth to us: best expected row, or the best guaranteed row if there
+    is no forecast (minimax mode)."""
+    values = np.asarray(table.values, dtype=float)
+    if table.opp_probs is None:
+        return float(values.min(axis=1).max())
+    return float((values @ np.asarray(table.opp_probs, dtype=float)).max())
 
 
 def replacement_tables(
@@ -137,10 +156,13 @@ def replacement_tables(
     return tables
 
 
-def _table(battle, beliefs, class_probs, me_key, rows, *, entering):
+def _table(battle, beliefs, class_probs, me_key, rows, *, entering, lookahead=True):
     """Score rows for our Pokemon at me_key against the opponent's active Pokemon.
 
     entering=True charges hazard damage on every row, because that Pokemon is arriving.
+    lookahead=True values lasting effects (stat changes, status, hazards) by how much they
+    change next turn's table (F8); the inner tables use lookahead=False, so it goes one turn
+    deep only.
     """
     opp = battle.opponent_active_pokemon
     if opp is None or opp.fainted:
@@ -173,6 +195,60 @@ def _table(battle, beliefs, class_probs, me_key, rows, *, entering):
     if not columns:
         raise PayoffUnavailable("No plausible opponent actions are available")
 
+    # Lasting effects: value = (next turn's table value with the effect - without it), times
+    # PAYOFF_EFFECT_TURNS. Next turn is approximated from the current position (HP as now).
+    # With both weights at zero no lasting effect can count, so skip the extra work.
+    lookahead = lookahead and bool(PAYOFF_EFFECT_TURNS or PAYOFF_HAZARD_WEIGHT)
+    futures: dict[tuple[str, str], tuple[float, bool, bool] | None] = {}
+    base: list[float] = []
+    # Next turn's rows come from the real battle: the copies made for lasting effects have
+    # copied Pokemon objects, but the same keys, moves and legal switches.
+    next_rows = _rows(battle, me_key) if lookahead and not entering else []
+
+    def next_turn_value(state: Battle) -> float:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", PayoffApproximationWarning)
+            inner = _table(
+                state, beliefs, class_probs, me_key, next_rows, entering=False, lookahead=False
+            )
+        return _table_value(inner)
+
+    def future(user_key, target_key, move):
+        if not lookahead or entering or move is None:
+            return None
+        key = (user_key, move.id)
+        if key not in futures:
+            effect = lasting_effect(battle, user_key, target_key, move)
+            futures[key] = None
+            if effect is not None:
+                value = 0.0
+                if effect.changes_field:
+                    value += PAYOFF_HAZARD_WEIGHT * hazard_value(battle, effect.battle, unseen)
+                if effect.changes_pokemon and PAYOFF_EFFECT_TURNS:
+                    # Look one turn ahead with the stat/status change but the hazards as now
+                    # (hazards are valued above, over all remaining switch-ins).
+                    state = copy(effect.battle)
+                    state._side_conditions = dict(battle.side_conditions)
+                    state._opponent_side_conditions = dict(battle.opponent_side_conditions)
+                    try:
+                        if not base:
+                            base.append(next_turn_value(battle))
+                        value += PAYOFF_EFFECT_TURNS * (next_turn_value(state) - base[0])
+                    except PayoffUnavailable:
+                        pass
+                futures[key] = (value, effect.needs_user, effect.needs_target)
+        return futures[key]
+
+    def with_future(effect, lasting, target_is_the_active_one):
+        if lasting is None:
+            return effect
+        value, needs_user, needs_target = lasting
+        if needs_target and not target_is_the_active_one:
+            return effect  # aimed at a Pokemon that is not the one we evaluated
+        return replace(
+            effect, future=value, future_needs_user=needs_user, future_needs_target=needs_target
+        )
+
     def cell(our_key, their_key, our_move, their_move):
         scenario = scenario_copy(battle, our_key, their_key)
         our_mon, their_mon = scenario.active_pokemon, scenario.opponent_active_pokemon
@@ -190,6 +266,10 @@ def _table(battle, beliefs, class_probs, me_key, rows, *, entering):
             if their_key
             else move_effect(scenario, our_key, None, None)
         )
+        if our_key == me_key:
+            ours = with_future(ours, future(me_key, opp_key, our_move), their_key == opp_key)
+        if their_key == opp_key:
+            theirs = with_future(theirs, future(opp_key, me_key, their_move), our_key == me_key)
         return turn_value(
             our_mon.current_hp_fraction,
             their_mon.current_hp_fraction if their_mon else 1,
@@ -216,7 +296,8 @@ def _table(battle, beliefs, class_probs, me_key, rows, *, entering):
         raise PayoffUnavailable(f"Could not score this turn: {error}") from error
     warnings.warn(
         "Approximate payoffs: two damage endpoints and limited accuracy/order modifiers; "
-        "no secondary/residual/setup utility, switch-in abilities or new tera choices. "
+        "lasting effects valued one turn ahead from the current HP; no chance-based "
+        "secondary effects, residual damage, switch-in abilities or new tera choices. "
         "Candidate moves need not be exhaustive. Unseen switch targets receive zero outgoing "
         "credit. See docs/f4-implementation.md.",
         PayoffApproximationWarning,
