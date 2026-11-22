@@ -9,8 +9,8 @@ from test_damage import make_battle
 from test_payoff import add_reserve
 
 from pokeagent.agent import player
-from pokeagent.agent._inputs import public_beliefs
 from pokeagent.agent.player import ExplainableAgent
+from pokeagent.beliefs.tracker import beliefs_for
 from pokeagent.config import BATTLE_FORMAT
 from pokeagent.features.build import FEATURE_NAMES
 from pokeagent.interfaces import Action, PayoffTable, PokemonView, PublicState, SideView
@@ -127,11 +127,11 @@ def test_forced_replacement_does_not_query_model_and_still_logs():
     assert "switch:snorlax" in log.getvalue()
 
 
-def test_cosmetic_adapter_conditions_base_prior_on_public_revealed_move():
+def test_cosmetic_form_conditions_base_prior_on_public_revealed_move():
     seen = PokemonView("pikachuhoenn", 90, active=True, revealed_moves=["surf"])
     state = PublicState("test", 1, "p1", SideView("p1"), SideView("p2", [seen]))
     before = deepcopy(state)
-    belief = public_beliefs(state)["pikachuhoenn"]
+    belief = beliefs_for(state)["pikachuhoenn"]
     assert belief.species == "pikachuhoenn"
     assert belief.move_probs["surf"] == 1
     assert state == before

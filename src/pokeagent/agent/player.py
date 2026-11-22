@@ -6,12 +6,10 @@ from typing import TYPE_CHECKING, Literal, TextIO
 
 import numpy as np
 from poke_env.battle import AbstractBattle, Battle
-from poke_env.data import GenData, to_id_str
 from poke_env.player import BattleOrder, Player
 
-from pokeagent.agent._inputs import public_beliefs
 from pokeagent.agent.explain import format_turn
-from pokeagent.beliefs.tracker import prior_belief
+from pokeagent.beliefs.tracker import beliefs_for, prior_belief
 from pokeagent.config import RANDOM_BATTLE_SETS_PATH, SEED
 from pokeagent.decision._validation import action_label
 from pokeagent.decision.damage import estimate_move_damage
@@ -35,14 +33,7 @@ def flat_beliefs(battle: Battle) -> BeliefState:
     opponent = battle.opponent_active_pokemon
     if opponent is None:
         return {}
-    belief = prior_belief(opponent.species)
-    if not belief.move_probs:
-        # Temporary consumer-side workaround for cosmetic forms in D1 / PR #48.
-        entry = GenData.from_gen(battle.gen).pokedex.get(opponent.species, {})
-        base = to_id_str(entry.get("baseSpecies", ""))
-        if base and base != opponent.species:
-            belief = prior_belief(base)
-    return {opponent.species: belief}
+    return {opponent.species: prior_belief(opponent.species)}
 
 
 class ExplainableAgent(Player):
@@ -196,7 +187,7 @@ class ExplainableAgent(Player):
             state = None
             if self.mode == "model":
                 state = state_from_battle(battle)
-                beliefs = public_beliefs(state)
+                beliefs = beliefs_for(state)
                 forecast = self.opponent_model.predict_proba(build_features(state, beliefs))
             else:
                 beliefs = flat_beliefs(battle)
