@@ -27,6 +27,23 @@ battle for an older tie, so the sample depended on how Hugging Face happened to 
 rows. Battle-id order is deterministic and independent of storage. Exceeding the limit would
 make `--max-battles` mean something different from what it says. Checking the split last let a
 refused run replace the files the frozen split refers to.
+## 2026-11-22: Action-class labels follow the move's category, in one shared rule (E1 #14, Raghav with Claude)
+**Decision:** a switch is "switch"; a move is "attack" if its official category is Physical or
+Special and "non_damaging" if it is Status (Showdown's Gen 9 move data, via poke-env). The rule is
+written once, in `models/labels.py`, and used by the label column of the feature table, the
+"opponent's last action" feature and the payoff table's grouping of the opponent's moves.
+**Alternatives:** hand-written exceptions, e.g. counting Status moves that switch the user out
+(Parting Shot, Shed Tail, Teleport, Chilly Reception) as switches, or labelling Sleep Talk by the
+move it calls; keeping separate copies of the rule in each module.
+**Why:** the label answers "what type of choice did the player make", not "how good was it";
+valuing moves is the payoff table's job (#66 to #69, value model #71 to #74). Exceptions are
+rare: on the 765,596 decision points, the four status pivots are 1,806 turns (0.24%) and Sleep
+Talk 276. U-turn (11,435), Volt Switch (4,959) and Flip Turn (4,064) are attacks either way:
+the player chose a damaging move. Every recorded move has a category, so no turn is dropped.
+One shared rule means the model can never predict one grouping while the payoff table reads
+another; a test checks the feature code against it, and recomputing all 765,596 labels with it
+reproduces the existing feature table exactly.
+
 ## 2026-11-20: Forced replacements chosen by next-turn matchup (F7 #61, Raghav with Claude)
 **Decision:** after a faint or a forced switch, build next turn's payoff table as if each
 reserve were in battle (its own moves against the opponent's likely moves, with hazard damage

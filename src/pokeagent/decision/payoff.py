@@ -3,7 +3,7 @@
 import math
 import warnings
 
-from poke_env.battle import Battle, Move, MoveCategory
+from poke_env.battle import Battle, Move
 
 from pokeagent.config import RANDOM_BATTLE_TEAM_SIZE
 from pokeagent.decision._payoff_state import (
@@ -15,6 +15,7 @@ from pokeagent.decision._payoff_state import (
 )
 from pokeagent.decision._turn import turn_value
 from pokeagent.interfaces import ACTION_CLASSES, Action, BeliefState, PayoffTable
+from pokeagent.models.labels import move_class
 
 SWITCH_COLUMN = "__opponent_switch__"  # A modelled column, never an executable action.
 
@@ -52,7 +53,11 @@ def _probabilities(moves, switch_available, class_probs, complete_move_pool):
     total = sum(class_probs.values())
     if not math.isclose(total, 1, rel_tol=0, abs_tol=1e-6):
         raise PayoffUnavailable("Class probabilities must sum to one")
-    classes = ["non_damaging" if m.category == MoveCategory.STATUS else "attack" for m, _ in moves]
+    # Same grouping the opponent model was trained on (one shared rule in models/labels.py).
+    try:
+        classes = [move_class(m.id) for m, _ in moves]
+    except ValueError as error:
+        raise PayoffUnavailable(str(error)) from error
     weights = {
         c: sum(w for (_, w), name in zip(moves, classes, strict=True) if name == c)
         for c in ACTION_CLASSES[:2]
