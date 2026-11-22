@@ -37,6 +37,28 @@ z = 2.98, p = 0.003. For reference, before this change the agent won 641 (61.1% 
 logged games the agent now uses Swords Dance, Nasty Plot and Shell Smash. Thunder Wave is now
 scored correctly (+0.11 against a fast attacker) but still below a strong attack. Cost: each
 decision is about 2.4 times slower (about 0.15 s), fine for live play.
+## 2026-11-22: Value model: LightGBM on the position table (V2 #72, Raghav with Claude)
+**Decision:** predict P(win) for the player to move with LightGBM (15 leaves, 446 trees by early
+stopping), chosen on validation log loss over logistic regression and a one-feature baseline
+(team HP lead only). Saved to `artifacts/value_model.pkl`.
+**Alternatives:** logistic regression on all 44 features; bigger trees (63 or 255 leaves); the
+team HP lead alone.
+**Why:** validation (117,018 rows, test untouched):
+
+| Model | Log loss | Brier | Accuracy | AUC | Calibration error |
+|---|---|---|---|---|---|
+| coin flip | 0.693 | 0.250 | | | |
+| team HP lead only | 0.626 | 0.218 | 63.9% | 0.701 | 0.008 |
+| logistic regression | 0.590 | 0.204 | 66.6% | 0.743 | 0.012 |
+| LightGBM, 15 leaves | 0.581 | 0.201 | 67.1% | 0.750 | 0.010 |
+
+Bigger trees overfit slightly (0.582, 0.584), and the C setting barely matters for logistic
+regression (0.58976 to 0.58978). The first five turns stay near a coin flip (0.686), as expected
+with random teams nobody has seen yet. By turn 31+ log loss is 0.479. Team HP and Pokemon
+remaining carry 71% of the gain. The two players' predictions for the same turn add up to 1
+within 0.03 on average, so the model treats the game as symmetric without being forced to.
+The baseline's coefficient says +1 Pokemon of team HP lead moves P(win) from 52% to 72% at an
+even position, a useful scale for the payoff's KO bonus.
 
 ## 2026-11-22: The value model's training table (V1 #71, Raghav with Claude)
 **Decision:** one row per decision point, with features from that player's own side and the
