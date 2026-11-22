@@ -15,6 +15,33 @@ Template:
 
 ---
 
+## 2026-11-23: Score the payoff table by change in predicted win probability (V4 #74, Raghav with Claude)
+**Decision:** each cell is P(win at the end of the turn) - P(win now), from the logistic value
+model (V2), instead of HP traded plus a 0.25 knockout bonus. Only the HP features change within
+a turn (active HP, team HP, Pokemon remaining); the rest of the position comes from the
+start-of-turn public state, for the two Pokemon that will face each other. A knocked-out
+active Pokemon is replaced by the average HP of the rest of its team; losing the last Pokemon
+decides the game. Every row is measured against the same P(win now). Hazard damage still to
+come is converted at the current rate of P(win) per Pokemon of team HP. The HP utility stays
+available (`utility="hp"`) for the ablations.
+**Alternatives:** the LightGBM value model (slightly better log loss, 0.581 vs 0.590, but one
+model call per outcome branch: thousands per decision); a hand-tuned KO bonus.
+**Why:** HP is not worth the same everywhere. Knocking out their last Pokemon wins the game;
+chipping a healthy Pokemon when we are 3 Pokemon behind changes little. The value model learned
+these exchange rates from 765,596 human positions, and with logistic regression a change in HP
+moves the logit linearly, so each branch is one multiplication. Results, same code, best
+response, 1,000 games each against SimpleHeuristicsPlayer:
+
+| Utility | Wins | 95% interval |
+|---|---|---|
+| HP traded + KO bonus | 674 | 64.4% to 70.2% |
+| change in P(win) | 751 | 72.3% to 77.7% |
+
++7.7 points, z = 3.8, p = 0.0001: the largest single gain so far. Puzzles: 11/12 with either
+utility, but the value utility's margins are clearer (switching out of a 4x weakness +0.07
+against -0.03 for staying in). Puzzle positions now give us a full team (6), so the value
+model is not asked about an unrealistic 1-against-6 position.
+
 ## 2026-11-22: Exact-move prediction from (position, candidate move) pairs (E6 #79, Raghav with Claude)
 **Decision:** for a decision where the opponent used a move, the candidates are the moves the
 beliefs allow plus those already revealed. A LightGBM classifier scores each (position,
