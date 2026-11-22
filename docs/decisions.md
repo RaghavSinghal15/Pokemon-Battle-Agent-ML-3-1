@@ -15,6 +15,13 @@ Template:
 
 ---
 
+## 2026-11-20: Save tournament replays from the spectator channel (A5, Devam)
+**Decision.** Capture finished rooms through a separate spectator session while games run.
+Write a separate local JSONL archive with one outcome and public log per fresh battle.
+**Alternatives.** Save a player's replay stream or fetch all rooms after the tournament.
+**Why.** Showdown's spectator channel already hides the private player view. Reading rooms
+as they finish keeps early replays available in long tournaments. The summary is saved only
+after checking that each completed game has a public log with an ending.
 ## 2026-11-20: Newest-sample ties filled by battle id; rebuild refuses first (B, #64, Raghav with Claude)
 **Decision:** when `--max-battles` cuts through battles uploaded in the same second, every
 battle strictly newer than that second is kept, and the remaining places go to the tied

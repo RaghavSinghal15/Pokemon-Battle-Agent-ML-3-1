@@ -25,5 +25,21 @@ outputs do not mark source dirty; this does not prove untracked source files wer
 The server's random teams are not seeded by this function. A recorded Python seed makes
 client-side random choices traceable; it does not reproduce the entire battle stream.
 `--server-dir` records the actual server checkout revision and tracked-change flag. Without
-it, server provenance is null, not guessed. No player names, raw battle logs or replay data
-are stored in these summary records. Game logs remain a separate A5 task.
+it, server provenance is null, not guessed. Summary records contain counts and provenance only.
+
+## Save public battle logs (A5)
+
+    python scripts/run_tournament.py --p1 agent --p2 heuristics --games 20 --save-replays
+
+`agent` runs the flat-forecast best-response agent. The same option works with baseline bots.
+`--save-replays` saves a timestamped JSONL file under `data/interim/agent_games/`.
+`--replay-out PATH` enables capture and chooses the file explicitly. Each JSON line has a
+`battle_id`, the first player's `player_side` and `outcome` (win, loss or tie), and a list
+of `spectator_log` lines. This makes it possible to find losses and replay them through the
+public-state parser. The command prints both output paths.
+
+Python callers can also pass `save_replays=True` or `replay_path=Path(...)` to `run_matchup`
+with their own agent and opponent. A separate spectator session collects only new, finished
+rooms while the matchup is running. If a room is unavailable or its log is incomplete,
+the capture fails before either output is written. Capture time is included in `--timeout`.
+The logs may contain public player names and belong in the ignored data directory.
