@@ -143,7 +143,7 @@ def move_effect(
         aimed_at_self = to_id_str(str(move.target).split()[0]) in _SELF_TARGETS
         accuracy = 1.0 if aimed_at_self or move.entry.get("accuracy") is True else move.accuracy
         return TurnEffect(
-            heal=move.heal,
+            heal=heal_fraction(battle, attacker_key, target_key, move),
             act_chance=can_act,
             hit_chance=accuracy,
             blocked_by_protect=not aimed_at_self,
@@ -176,6 +176,36 @@ def move_effect(
         blocked_by_protect=bool(move.entry.get("flags", {}).get("protect"))
         and not move.breaks_protect,
     )
+
+
+# Healing moves whose amount the move data does not state (it depends on the weather or on the
+# target), so poke-env's Move.heal reports 0 for them.
+_WEATHER_HEAL = {"moonlight", "morningsun", "synthesis"}
+_SUN = {Weather.SUNNYDAY, Weather.DESOLATELAND}
+
+
+def heal_fraction(battle: Battle, user_key: str, target_key: str | None, move: Move) -> float:
+    """Fraction of the user's max HP a status move restores this turn.
+
+    Moonlight, Morning Sun and Synthesis heal 1/2, 2/3 in sun and 1/4 in other weather; Shore
+    Up heals 1/2, 2/3 in sand; Rest heals fully (and puts the user to sleep, valued as a
+    lasting effect); Strength Sap heals the target's Attack stat. Wish (next turn) is ignored.
+    """
+    weather = set(battle.weather)
+    if move.id in _WEATHER_HEAL:
+        if weather & _SUN:
+            return 2 / 3
+        return 1 / 4 if weather else 1 / 2
+    if move.id == "shoreup":
+        return 2 / 3 if Weather.SANDSTORM in weather else 1 / 2
+    if move.id == "rest":
+        return 1.0
+    if move.id == "strengthsap" and target_key is not None:
+        user, target = battle.get_pokemon(user_key), battle.get_pokemon(target_key)
+        stage = target.boosts.get("atk", 0)
+        attack = target.stats["atk"] * (2 + max(stage, 0)) / (2 + max(-stage, 0))
+        return min(1.0, attack / user.stats["hp"])
+    return move.heal
 
 
 # ---------------------------------------------------------------------------------------
@@ -283,6 +313,11 @@ def lasting_effect(
             continue
         user_changed |= _boost(user, secondary.get("self", {}).get("boosts"))
         target_changed |= _boost(target, secondary.get("boosts"))
+
+    # Rest: the user sleeps (its full heal is counted this turn). It fails at full HP.
+    if move.id == "rest" and user.status is None and user.current_hp_fraction < 1:
+        user._status = Status.SLP
+        user_changed = True
 
     # Status from a status move.
     if status_move and move.status is not None and _status_can_land(target, move.status, move):

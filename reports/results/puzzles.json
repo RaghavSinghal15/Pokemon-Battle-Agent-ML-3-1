@@ -1,0 +1,230 @@
+{
+  "solved": 11,
+  "flat_solved": 9,
+  "puzzles": [
+    {
+      "puzzle": "take_the_ko",
+      "idea": "A super-effective hit knocks out a weakened Pokemon: take it.",
+      "accepted": [
+        "earthquake"
+      ],
+      "best_response": "earthquake",
+      "solved": true,
+      "flat_best_response": "earthquake",
+      "flat_solved": true,
+      "lp_accepted_mass": 0.23827798582526072,
+      "expected": {
+        "earthquake": 0.49411764705882344,
+        "dragonclaw": -0.1125292779227732,
+        "stoneedge": -0.07282339556983199,
+        "swordsdance": -0.23164692498159672
+      }
+    },
+    {
+      "puzzle": "pick_super_effective",
+      "idea": "Against Steel, use the 2x Ground move, not the resisted Dragon move.",
+      "accepted": [
+        "earthquake"
+      ],
+      "best_response": "earthquake",
+      "solved": true,
+      "flat_best_response": "earthquake",
+      "flat_solved": true,
+      "lp_accepted_mass": 0.5096293425935585,
+      "expected": {
+        "earthquake": 0.3882374405315958,
+        "dragonclaw": -0.17800308977143445,
+        "stoneedge": -0.22233074128658595,
+        "swordsdance": 0.3718500168062881
+      }
+    },
+    {
+      "puzzle": "ground_cannot_hit_flying",
+      "idea": "Earthquake does nothing to a Flying type; Fire Fang hits Steel for 2x.",
+      "accepted": [
+        "dragonclaw",
+        "firefang",
+        "swordsdance"
+      ],
+      "best_response": "swordsdance",
+      "solved": true,
+      "flat_best_response": "swordsdance",
+      "flat_solved": true,
+      "lp_accepted_mass": 1.0,
+      "expected": {
+        "earthquake": -0.17400455062571105,
+        "dragonclaw": -0.07790285571045678,
+        "firefang": 0.024368330730221124,
+        "swordsdance": 0.03539799174717025
+      }
+    },
+    {
+      "puzzle": "electric_cannot_hit_ground",
+      "idea": "Thunderbolt and Volt Switch do nothing to a Ground type; use Shadow Ball.",
+      "accepted": [
+        "shadowball"
+      ],
+      "best_response": "shadowball",
+      "solved": true,
+      "flat_best_response": "shadowball",
+      "flat_solved": true,
+      "lp_accepted_mass": 1.0,
+      "expected": {
+        "thunderbolt": -0.5540305010893246,
+        "voltswitch": -0.5540305010893246,
+        "shadowball": -0.34604013770847736,
+        "calmmind": -0.4806221375431432
+      }
+    },
+    {
+      "puzzle": "leave_a_4x_weakness",
+      "idea": "At 70% HP, faster Weavile's 4x Ice moves knock Garchomp out: switch to the Steel type.",
+      "accepted": [
+        "corviknight"
+      ],
+      "best_response": "corviknight",
+      "solved": true,
+      "flat_best_response": "stoneedge",
+      "flat_solved": false,
+      "lp_accepted_mass": 0.8749293035552356,
+      "expected": {
+        "earthquake": -0.2375743991833821,
+        "dragonclaw": -0.30151129904620794,
+        "stoneedge": -0.2163343443136976,
+        "swordsdance": -0.3674232729796957,
+        "corviknight": -0.19904180790960452
+      }
+    },
+    {
+      "puzzle": "switch_to_an_immunity",
+      "idea": "Earthquake from a faster Garchomp knocks out Heatran (4x): switch to the Flying type.",
+      "accepted": [
+        "corviknight"
+      ],
+      "best_response": "corviknight",
+      "solved": true,
+      "flat_best_response": "stealthrock",
+      "flat_solved": false,
+      "lp_accepted_mass": 0.8870572255016085,
+      "expected": {
+        "magmastorm": -0.3409476162241376,
+        "earthpower": -0.2675687766336939,
+        "flashcannon": -0.204997673106959,
+        "stealthrock": -0.2347367231638418,
+        "corviknight": -0.09966610169491526
+      }
+    },
+    {
+      "puzzle": "set_up_when_safe",
+      "idea": "Blissey can only chip with Seismic Toss and heals off small hits: Swords Dance first.",
+      "accepted": [
+        "swordsdance"
+      ],
+      "best_response": "swordsdance",
+      "solved": true,
+      "flat_best_response": "swordsdance",
+      "flat_solved": true,
+      "lp_accepted_mass": 1.0,
+      "expected": {
+        "earthquake": 0.1808928489069274,
+        "dragonclaw": 0.09482865971773818,
+        "stoneedge": -0.007333502444423924,
+        "swordsdance": 0.507591694723734
+      }
+    },
+    {
+      "puzzle": "do_not_set_up_when_dying",
+      "idea": "At 15% HP Seismic Toss knocks Garchomp out this turn: a boost would be wasted.",
+      "accepted": [
+        "dragonclaw",
+        "earthquake",
+        "stoneedge"
+      ],
+      "best_response": "earthquake",
+      "solved": true,
+      "flat_best_response": "swordsdance",
+      "flat_solved": false,
+      "lp_accepted_mass": 0.8895848677821159,
+      "expected": {
+        "earthquake": 0.11113175675675677,
+        "dragonclaw": 0.025067567567567544,
+        "stoneedge": -0.07709459459459456,
+        "swordsdance": -0.054186655405405376
+      }
+    },
+    {
+      "puzzle": "hazards_early",
+      "idea": "Turn 1, five unseen opponents, nothing threatening in front: set Stealth Rock.",
+      "accepted": [
+        "stealthrock"
+      ],
+      "best_response": "earthquake",
+      "solved": false,
+      "flat_best_response": "stealthrock",
+      "flat_solved": true,
+      "lp_accepted_mass": 0.44696097113041994,
+      "expected": {
+        "stealthrock": 0.10226109215017062,
+        "earthquake": 0.1808928489069274,
+        "dragonclaw": 0.09482865971773818,
+        "firefang": -0.0535370497417213
+      }
+    },
+    {
+      "puzzle": "no_hazards_on_the_last_pokemon",
+      "idea": "Their last Pokemon will never switch, so Stealth Rock does nothing: attack.",
+      "accepted": [
+        "dragonclaw",
+        "earthquake",
+        "firefang"
+      ],
+      "best_response": "earthquake",
+      "solved": true,
+      "flat_best_response": "earthquake",
+      "flat_solved": true,
+      "lp_accepted_mass": 1.0,
+      "expected": {
+        "stealthrock": -0.22130411352613616,
+        "earthquake": 0.19041352516518673,
+        "dragonclaw": 0.09981964180814545,
+        "firefang": -0.056354789201811896
+      }
+    },
+    {
+      "puzzle": "heal_when_low_and_safe",
+      "idea": "Moonblast barely scratches Blissey and Seismic Toss is fixed damage: heal with Moonlight.",
+      "accepted": [
+        "moonlight"
+      ],
+      "best_response": "moonlight",
+      "solved": true,
+      "flat_best_response": "moonlight",
+      "flat_solved": true,
+      "lp_accepted_mass": 1.0,
+      "expected": {
+        "moonblast": -0.12581956956956955,
+        "moonlight": 0.2925925925925926,
+        "calmmind": -0.20740740740740737,
+        "thunderwave": -0.1630740740740741
+      }
+    },
+    {
+      "puzzle": "priority_to_finish",
+      "idea": "Iron Valiant is faster and knocks us out, but Extreme Speed moves first and finishes it.",
+      "accepted": [
+        "extremespeed"
+      ],
+      "best_response": "extremespeed",
+      "solved": true,
+      "flat_best_response": "extremespeed",
+      "flat_solved": true,
+      "lp_accepted_mass": 1.0,
+      "expected": {
+        "extremespeed": 0.288235294117647,
+        "earthquake": -0.32941176470588235,
+        "dragondance": -0.32941176470588235,
+        "firepunch": -0.32941176470588235
+      }
+    }
+  ]
+}

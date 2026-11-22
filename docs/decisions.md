@@ -15,6 +15,26 @@ Template:
 
 ---
 
+## 2026-11-22: Puzzle positions with their own forecast, and the healing moves they exposed (V3 #73, Raghav with Claude)
+**Decision:** twelve hand-built positions in `eval/puzzles.py`, each with the accepted answer(s)
+and the forecast a strong player would expect (Blissey uses Seismic Toss 70% of the time, not a
+third). `scripts/run_puzzles.py` reports best response with the puzzle's forecast and with a
+flat 1/3 forecast, and how much probability minimax puts on accepted answers. The puzzles also
+exposed a bug: Moonlight, Morning Sun, Synthesis, Shore Up, Rest and Strength Sap healed 0,
+because the move data gives no fixed amount (it depends on the weather or the target). They now
+heal 1/2 (2/3 in sun, 1/4 in other weather), Shore Up 2/3 in sand, Rest fully plus sleep, and
+Strength Sap the target's Attack.
+**Alternatives:** puzzles with a flat forecast only; puzzles in the opponent model's hands; a
+larger set generated from replays (no agreed answers).
+**Why:** with a flat forecast the agent "failed" puzzles because the forecast was absurd, not
+because it chose badly. Fixing the forecast per puzzle tests the payoff table alone. Result:
+11/12 (flat forecast 9/12); minimax puts 82% of its probability on accepted answers. The miss is
+Stealth Rock on turn 1 against Blissey: Earthquake's chip (+0.18) beats the hazard (+0.10)
+because Blissey's healing is not counted against our damage and the hazard weight is 0.5. This
+is a known open question for the value model (#74). Minimax spreads its probability when the
+opponent might switch (24% on the obvious knockout), because an attack into an unseen switch-in
+gets no credit: a known approximation that makes minimax cautious.
+
 ## 2026-11-22: Value lasting effects by their change to next turn's table (F8 #66, F9 #67, F10 #68, Raghav with Claude)
 **Decision:** a move that leaves something behind is worth what it changes later. Stat changes
 (Swords Dance, Draco Meteor's drop, Icy Wind) and statuses (Thunder Wave, Will-O-Wisp, Toxic,
