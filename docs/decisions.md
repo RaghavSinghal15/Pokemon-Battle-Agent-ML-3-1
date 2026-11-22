@@ -15,6 +15,29 @@ Template:
 
 ---
 
+## 2026-11-22: Value lasting effects by their change to next turn's table (F8 #66, F9 #67, F10 #68, Raghav with Claude)
+**Decision:** a move that leaves something behind is worth what it changes later. Stat changes
+(Swords Dance, Draco Meteor's drop, Icy Wind) and statuses (Thunder Wave, Will-O-Wisp, Toxic,
+Spore, with type and known-ability immunities) are valued as the change in next turn's table
+value, computed one turn ahead from the current HP, times `PAYOFF_EFFECT_TURNS` (1.0). Entry
+hazards and their removal are valued as the change in entry damage summed over every Pokemon
+still to switch in (unseen opponents count as neutral), times `PAYOFF_HAZARD_WEIGHT` (0.5). An
+effect counts only if the move lands, and a boost only if the user survives the turn (a status
+only if the target survives). With both weights at 0 the lookahead is skipped.
+**Alternatives:** hand-set bonuses per move ("Swords Dance = +0.2"); a deeper search; leaving it
+to the value model (#74).
+**Why:** the one-turn table gave setup, status and hazard moves no value, so the agent never
+used them (the bottleneck in the entry below). Measuring through next turn's table uses the
+same damage and speed model as everything else, so +2 Attack is worth more when it turns 2HKOs
+into OHKOs, and nothing when we are about to be knocked out. Hazards need their own sum, because
+one turn ahead sees only the active Pokemon (the lookahead gave Stealth Rock only +0.01). Best
+response, LightGBM forecast (36 features), 1,000 games each against SimpleHeuristicsPlayer: same
+code with effects off 606 (57.5% to 63.6%); effects on 670 (64.0% to 69.8%), +6.4 points,
+z = 2.98, p = 0.003. For reference, before this change the agent won 641 (61.1% to 67.0%). In 60
+logged games the agent now uses Swords Dance, Nasty Plot and Shell Smash. Thunder Wave is now
+scored correctly (+0.11 against a fast attacker) but still below a strong attack. Cost: each
+decision is about 2.4 times slower (about 0.15 s), fine for live play.
+
 ## 2026-11-22: The value model's training table (V1 #71, Raghav with Claude)
 **Decision:** one row per decision point, with features from that player's own side and the
 label "did this player win". The features are the 36 opponent-model features plus eight
