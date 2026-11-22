@@ -152,3 +152,17 @@ def test_cosmetic_form_uses_its_base_species_sets(tmp_path, monkeypatch):
     assert form.species == "polteageistantique"
     assert form.move_probs == base.move_probs and form.move_probs["shellsmash"] == 1
     assert tracker.prior_belief("notapokemon").move_probs == {}
+
+
+def test_copied_ability_keeps_the_sets_moves():
+    """Trace / Imposter show a copied ability that no template lists; the moves still count."""
+    prior = tracker.prior_belief("charizard")
+    seen = PokemonView("charizard", 100, revealed_ability="Intimidate")
+    result = tracker.update_belief(prior, seen)
+    assert result.move_probs == prior.move_probs  # the ability is ignored, not the set
+    assert result.ability_probs == {"intimidate": 1.0}
+    # Real evidence still narrows the roles when only the ability contradicts them.
+    seen = PokemonView("charizard", 100, revealed_ability="Intimidate", revealed_moves=["Roost"])
+    result = tracker.update_belief(prior, seen)
+    assert result.role_probs == {"Fast Attacker": pytest.approx(1.0)}
+    assert "dragondance" not in result.move_probs
