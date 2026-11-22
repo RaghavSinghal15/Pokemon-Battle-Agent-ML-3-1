@@ -33,7 +33,8 @@ core piece: M5 (the agent plays with every component) comes first. Roughly in or
 4. **Public ladder games** against human players (check Showdown's current bot policy first).
 5. **Behaviour cloning:** a model that imitates human choices, as another agent to compare.
 6. **Deep learning comparison:** a small transformer over the turn history, as a contrast to
-   the interpretable models.
+   the interpretable models. Torch is allowed for this inside `src/pokeagent/dl/` only, with
+   the optional `[dl]` install (see AGENTS.md).
 7. **Opponent play styles:** clustering opponents (k-means or Gaussian mixtures) and
    visualising them with PCA.
 
