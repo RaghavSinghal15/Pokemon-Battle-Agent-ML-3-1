@@ -13,6 +13,8 @@ dist/
 data/*
 !data/README.md
 artifacts/
+# Worktrees sometimes link artifacts/ to the main checkout; never commit the link either.
+artifacts
 
 # Local Showdown server, if someone clones it inside the repo by mistake
 pokemon-showdown/
