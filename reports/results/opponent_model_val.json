@@ -88,37 +88,37 @@
       "model": "logistic regression (C=0.01)",
       "rows": 130600,
       "hidden_rows": 13582,
-      "all_turns_log_loss": 0.7932020628917179,
-      "switch_log_loss": 0.3950782633048123,
+      "all_turns_log_loss": 0.7586736181465247,
+      "switch_log_loss": 0.3950729774689309,
       "actual_switch_share": 0.1708499234303216,
-      "mean_predicted_switch": 0.19442262971097393,
+      "mean_predicted_switch": 0.19438008453328845,
       "visible_only": {
         "model": "logistic regression (C=0.01)",
         "rows": 117018,
-        "log_loss": 0.8538706396397331,
-        "accuracy": 0.613640636483276,
-        "macro_f1": 0.46921022875916374,
+        "log_loss": 0.8149847081323779,
+        "accuracy": 0.6268095506674187,
+        "macro_f1": 0.5107530468233498,
         "confusion_matrix": [
           [
-            59821,
-            3958,
-            3817
+            57777,
+            6052,
+            3767
           ],
           [
-            20248,
-            5185,
-            1676
+            16580,
+            8984,
+            1545
           ],
           [
-            13973,
-            1539,
-            6801
+            13244,
+            2482,
+            6587
           ]
         ],
         "mean_predicted": {
-          "attack": 0.5757354679884473,
-          "non_damaging": 0.23176196659488582,
-          "switch": 0.192502565416671
+          "attack": 0.5740333239257173,
+          "non_damaging": 0.23366412825010188,
+          "switch": 0.19230254782418288
         }
       }
     },
@@ -126,37 +126,37 @@
       "model": "LightGBM (255 leaves)",
       "rows": 130600,
       "hidden_rows": 13582,
-      "all_turns_log_loss": 0.7288811673894137,
-      "switch_log_loss": 0.36635130947275535,
+      "all_turns_log_loss": 0.6790631126748761,
+      "switch_log_loss": 0.36291919616048446,
       "actual_switch_share": 0.1708499234303216,
-      "mean_predicted_switch": 0.1993483259050506,
+      "mean_predicted_switch": 0.19993005557408372,
       "visible_only": {
         "model": "LightGBM (255 leaves)",
         "rows": 117018,
-        "log_loss": 0.7735454789332594,
-        "accuracy": 0.6534550240133996,
-        "macro_f1": 0.5564213738377884,
+        "log_loss": 0.7159540075875453,
+        "accuracy": 0.677835888495787,
+        "macro_f1": 0.6025696726629683,
         "confusion_matrix": [
           [
-            58062,
-            4611,
-            4923
+            56648,
+            6164,
+            4784
           ],
           [
-            16316,
-            8549,
-            2244
+            12308,
+            12778,
+            2023
           ],
           [
-            10858,
-            1600,
-            9855
+            10040,
+            2380,
+            9893
           ]
         ],
         "mean_predicted": {
-          "attack": 0.5763286110160348,
-          "non_damaging": 0.23044611320069297,
-          "switch": 0.1932252757832778
+          "attack": 0.5755931621801207,
+          "non_damaging": 0.23127477149258088,
+          "switch": 0.1931320663273002
         }
       }
     },
@@ -164,148 +164,148 @@
       "model": "LightGBM (255 leaves, hidden folded)",
       "rows": 130600,
       "hidden_rows": 13582,
-      "all_turns_log_loss": 0.7207147819396955,
-      "switch_log_loss": 0.3579558424924675,
+      "all_turns_log_loss": 0.6695681928364166,
+      "switch_log_loss": 0.3532844534069558,
       "actual_switch_share": 0.1708499234303216,
-      "mean_predicted_switch": 0.17263293964284257,
+      "mean_predicted_switch": 0.17274518279685572,
       "visible_only": {
         "model": "LightGBM (255 leaves, hidden folded)",
         "rows": 117018,
-        "log_loss": 0.7819260298214376,
-        "accuracy": 0.647866140251927,
-        "macro_f1": 0.5379518737824976,
+        "log_loss": 0.724730717110296,
+        "accuracy": 0.6720760908578167,
+        "macro_f1": 0.5834881241544728,
         "confusion_matrix": [
           [
-            59181,
-            4679,
-            3736
+            57715,
+            6281,
+            3600
           ],
           [
-            16643,
-            8647,
-            1819
+            12552,
+            12924,
+            1633
           ],
           [
-            12533,
-            1796,
-            7984
+            11689,
+            2618,
+            8006
           ]
         ],
         "mean_predicted": {
-          "attack": 0.5906151767271105,
-          "non_damaging": 0.23528050584565313,
-          "switch": 0.17410431742722474
+          "attack": 0.5898479057675797,
+          "non_damaging": 0.23590900675085505,
+          "switch": 0.17424308748156755
         }
       }
     }
   },
   "switch_reliability": {
     "lightgbm": {
-      "ece": 0.028498402474729036,
+      "ece": 0.029080132143762108,
       "bins": [
         {
-          "mean_predicted": 0.008061072997273556,
-          "observed_rate": 0.005206738131699847,
+          "mean_predicted": 0.0068921657574258,
+          "observed_rate": 0.006049004594180705,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.029053785130212013,
-          "observed_rate": 0.026339969372128638,
+          "mean_predicted": 0.0258510544741218,
+          "observed_rate": 0.022894333843797857,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.04835613293471646,
-          "observed_rate": 0.04058192955589587,
+          "mean_predicted": 0.044234326714755544,
+          "observed_rate": 0.03782542113323124,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.0712209181717845,
-          "observed_rate": 0.06577335375191425,
+          "mean_predicted": 0.06671447085171707,
+          "observed_rate": 0.06240428790199081,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.10242149977356979,
-          "observed_rate": 0.09479326186830016,
+          "mean_predicted": 0.09709966559427138,
+          "observed_rate": 0.09088820826952526,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.1463999350383754,
-          "observed_rate": 0.13361408882082695,
+          "mean_predicted": 0.1402834091509579,
+          "observed_rate": 0.13093415007656967,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.2066499906132675,
-          "observed_rate": 0.1796324655436447,
+          "mean_predicted": 0.2035020922412288,
+          "observed_rate": 0.17986217457886677,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.294422051456561,
-          "observed_rate": 0.24992343032159264,
+          "mean_predicted": 0.29599225857967176,
+          "observed_rate": 0.2483154670750383,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.4299689348006424,
-          "observed_rate": 0.3608728943338438,
+          "mean_predicted": 0.44002130827083036,
+          "observed_rate": 0.3683001531393568,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.6569289381341037,
-          "observed_rate": 0.5517611026033691,
+          "mean_predicted": 0.6787098041058566,
+          "observed_rate": 0.5610260336906585,
           "rows": 13060
         }
       ]
     },
     "lightgbm_hidden": {
-      "ece": 0.0038583730439538896,
+      "ece": 0.0038471530581786527,
       "bins": [
         {
-          "mean_predicted": 0.007637845400740635,
-          "observed_rate": 0.005819295558958652,
+          "mean_predicted": 0.006809621229737029,
+          "observed_rate": 0.005436447166921899,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.02745321568622027,
-          "observed_rate": 0.025421133231240428,
+          "mean_predicted": 0.02489220239729256,
+          "observed_rate": 0.02457886676875957,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.04510754703026313,
-          "observed_rate": 0.041960183767228175,
+          "mean_predicted": 0.041842275385905986,
+          "observed_rate": 0.03920367534456355,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.06498737642783149,
-          "observed_rate": 0.06454823889739664,
+          "mean_predicted": 0.0615632281472299,
+          "observed_rate": 0.06370597243491577,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.09052742269016918,
-          "observed_rate": 0.0931852986217458,
+          "mean_predicted": 0.08695118031432705,
+          "observed_rate": 0.0883614088820827,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.12533307227812646,
-          "observed_rate": 0.12863705972434916,
+          "mean_predicted": 0.12134272287725362,
+          "observed_rate": 0.12243491577335375,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.17325538488636205,
-          "observed_rate": 0.17143950995405818,
+          "mean_predicted": 0.17075553007204786,
+          "observed_rate": 0.17542113323124042,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.24222966369873106,
-          "observed_rate": 0.2459418070444104,
+          "mean_predicted": 0.24295879579862845,
+          "observed_rate": 0.2395865237366003,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.35817930526156677,
-          "observed_rate": 0.3588820826952527,
+          "mean_predicted": 0.3625681457817612,
+          "observed_rate": 0.3630168453292496,
           "rows": 13060
         },
         {
-          "mean_predicted": 0.5916185630684146,
-          "observed_rate": 0.5726646248085758,
+          "mean_predicted": 0.6077681259643736,
+          "observed_rate": 0.5867534456355283,
           "rows": 13060
         }
       ]
@@ -315,86 +315,93 @@
     "logistic_regression": [
       {
         "C": 0.01,
-        "val_log_loss": 0.8538706396397331
+        "val_log_loss": 0.8149847081323779
       },
       {
         "C": 0.1,
-        "val_log_loss": 0.8538775899391952
+        "val_log_loss": 0.8149914688567664
       },
       {
         "C": 1.0,
-        "val_log_loss": 0.8538783173170647
+        "val_log_loss": 0.8149921813299275
       },
       {
         "C": 10.0,
-        "val_log_loss": 0.8538783903812255
+        "val_log_loss": 0.8149922529447078
       }
     ],
     "lightgbm": [
       {
         "leaves": 15,
-        "trees": 2376,
-        "val_log_loss": 0.7754639237074347
+        "trees": 2997,
+        "val_log_loss": 0.7187054677468276
       },
       {
         "leaves": 63,
-        "trees": 940,
-        "val_log_loss": 0.7737629562290705
+        "trees": 1278,
+        "val_log_loss": 0.7164616418665767
       },
       {
         "leaves": 255,
-        "trees": 269,
-        "val_log_loss": 0.7735454789332594
+        "trees": 434,
+        "val_log_loss": 0.7159540075875453
       }
     ],
     "lightgbm_hidden": [
       {
         "leaves": 15,
-        "trees": 1901,
-        "val_log_loss": 0.9280004884289879
+        "trees": 2994,
+        "val_log_loss": 0.8748416505135713
       },
       {
         "leaves": 63,
-        "trees": 805,
-        "val_log_loss": 0.9256534147823752
+        "trees": 999,
+        "val_log_loss": 0.8727475231351822
       },
       {
         "leaves": 255,
-        "trees": 250,
-        "val_log_loss": 0.925530959728047
+        "trees": 361,
+        "val_log_loss": 0.8719563357804495
       }
     ]
   },
   "lightgbm_hidden_gain_share": {
-    "opp_hp": 0.1460703881077661,
-    "speed_advantage": 0.10303988312455042,
-    "my_revealed_moves": 0.07318720543656185,
-    "my_hp": 0.05886126878301511,
-    "opp_best_recovery_move_probability": 0.05817029024388604,
-    "opp_boost_sum": 0.0519017690000142,
-    "opp_revealed_moves": 0.05106133167594588,
-    "my_type_matchup": 0.0496847262551684,
-    "opp_remaining": 0.04937386087766344,
-    "opp_last_attack": 0.04931457096932672,
-    "turn": 0.03786250656036126,
-    "opp_best_setup_move_probability": 0.03573100951407113,
-    "opp_status": 0.033930953065249375,
-    "my_boost_sum": 0.03269071152050009,
-    "opp_last_non_damaging": 0.026882518322952034,
-    "my_remaining": 0.023363246258498418,
-    "opp_type_matchup": 0.022986372980186458,
-    "opp_hazard_layers": 0.015335329002585094,
-    "my_hazard_layers": 0.014043316384711856,
-    "opp_unrevealed": 0.012392347507285231,
-    "opp_last_switch": 0.011621133533556063,
-    "my_unrevealed": 0.011613366873435196,
-    "opp_paralyzed": 0.010254574388206988,
-    "my_status": 0.005902548195819708,
-    "opp_tera_used": 0.005216740277463686,
-    "my_tera_used": 0.00425337852234412,
-    "my_paralyzed": 0.003623730539787903,
-    "opp_choice_item_known": 0.00152362648632664,
-    "trick_room": 0.00010729559276059391
+    "opp_expected_status_moves": 0.13145773339889494,
+    "opp_hp": 0.1273426315219497,
+    "speed_advantage": 0.08260396716446253,
+    "my_revealed_moves": 0.06123569531268599,
+    "my_hp": 0.053513914295495076,
+    "my_type_matchup": 0.04163582057505122,
+    "opp_revealed_moves": 0.03965898981505948,
+    "opp_remaining": 0.03947927516662387,
+    "opp_boost_sum": 0.03904942419999962,
+    "turn": 0.034900500335474795,
+    "opp_best_recovery_move_probability": 0.029627131796680004,
+    "opp_last_attack": 0.029386657051663927,
+    "opp_best_setup_move_probability": 0.029110045070509585,
+    "my_boost_sum": 0.027893727102956185,
+    "opp_status": 0.02561202606336199,
+    "opp_pivot_move_probability": 0.019436450507840642,
+    "my_remaining": 0.019144201584262846,
+    "opp_type_matchup": 0.018633291229434946,
+    "opp_status_move_useful": 0.017505239613976445,
+    "opp_hazard_move_useful": 0.014392019727740239,
+    "opp_last_non_damaging": 0.014026258730420467,
+    "opp_hazard_layers": 0.013204370887820515,
+    "opp_protect_probability": 0.013082964830281452,
+    "my_hazard_layers": 0.011631235393738537,
+    "my_unrevealed": 0.01073573106360635,
+    "opp_unrevealed": 0.01018829115315311,
+    "opp_last_switch": 0.009204403071994147,
+    "opp_paralyzed": 0.008970111106150185,
+    "opp_substitute_probability": 0.008008389533488433,
+    "my_status": 0.004860454064609822,
+    "opp_tera_used": 0.004456878742759028,
+    "my_tera_used": 0.003705156270070364,
+    "my_paralyzed": 0.0028644645662830735,
+    "opp_hazard_removal_useful": 0.00213620404739357,
+    "opp_choice_item_known": 0.0012304977850202273,
+    "trick_room": 7.58472190867204e-05
   },
   "by_turn": [
     {
@@ -403,9 +410,9 @@
       "switch_share": 0.2908374792703151,
       "naive": 1.0787984353218392,
       "naive_hidden": 1.093656412568134,
-      "logistic_regression": 1.006347325194368,
-      "lightgbm": 0.9470846458720736,
-      "lightgbm_hidden": 0.9467651792326374
+      "logistic_regression": 0.9615899301880373,
+      "lightgbm": 0.86109190091983,
+      "lightgbm_hidden": 0.861346144273839
     },
     {
       "turns": "2-5",
@@ -413,9 +420,9 @@
       "switch_share": 0.23792383933229003,
       "naive": 0.9782944525553486,
       "naive_hidden": 0.9860606945185665,
-      "logistic_regression": 0.8572038391898424,
-      "lightgbm": 0.7806122882178793,
-      "lightgbm_hidden": 0.772500108556383
+      "logistic_regression": 0.8140141098919221,
+      "lightgbm": 0.71344187651549,
+      "lightgbm_hidden": 0.7042141991777816
     },
     {
       "turns": "6-15",
@@ -423,9 +430,9 @@
       "switch_share": 0.18772059784740075,
       "naive": 0.9020786233321381,
       "naive_hidden": 0.9031163903807554,
-      "logistic_regression": 0.8041598302946947,
-      "lightgbm": 0.7440690707941232,
-      "lightgbm_hidden": 0.7342080151437949
+      "logistic_regression": 0.7712827114290013,
+      "lightgbm": 0.693551725664966,
+      "lightgbm_hidden": 0.6821064317943483
     },
     {
       "turns": "16-30",
@@ -433,9 +440,9 @@
       "switch_share": 0.13107441367968098,
       "naive": 0.8351225179192872,
       "naive_hidden": 0.828568296524388,
-      "logistic_regression": 0.7445572908818646,
-      "lightgbm": 0.6855407800968167,
-      "lightgbm_hidden": 0.6764746201237947
+      "logistic_regression": 0.7130378904971222,
+      "lightgbm": 0.6428218344930181,
+      "lightgbm_hidden": 0.6330519014540686
     },
     {
       "turns": "31+",
@@ -443,9 +450,9 @@
       "switch_share": 0.11733349672201458,
       "naive": 0.8669796075679659,
       "naive_hidden": 0.8585837637535045,
-      "logistic_regression": 0.7565087898052948,
-      "lightgbm": 0.6787835149051974,
-      "lightgbm_hidden": 0.6754469562634245
+      "logistic_regression": 0.722349579401803,
+      "lightgbm": 0.6426986422576682,
+      "lightgbm_hidden": 0.6362410532370677
     }
   ]
 }

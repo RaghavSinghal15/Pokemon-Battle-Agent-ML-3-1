@@ -39,11 +39,50 @@ FEATURE_NAMES = [
     "opp_last_attack",
     "opp_last_non_damaging",
     "opp_last_switch",
+    # D7 (#90): why a player might use a non-damaging move NOW, from beliefs about its moves.
+    "opp_expected_status_moves",
+    "opp_status_move_useful",
+    "opp_hazard_move_useful",
+    "opp_hazard_removal_useful",
+    "opp_protect_probability",
+    "opp_substitute_probability",
+    "opp_pivot_move_probability",
 ]
 
 _HAZARDS = {"stealthrock", "spikes", "toxicspikes", "stickyweb"}
 _STATS = {"atk", "def", "spa", "spd", "spe"}
 _CHOICE_ITEMS = {"choiceband", "choicescarf", "choicespecs"}
+# Hazard-setting moves and how many layers each hazard can have.
+_HAZARD_MOVES = {"stealthrock": 1, "spikes": 3, "toxicspikes": 2, "stickyweb": 1}
+_HAZARD_REMOVAL = {"rapidspin", "defog", "mortalspin", "tidyup", "courtchange"}
+_PROTECT_MOVES = {
+    "protect",
+    "detect",
+    "kingsshield",
+    "spikyshield",
+    "banefulbunker",
+    "silktrap",
+    "burningbulwark",
+    "obstruct",
+}
+# Moves that let the user switch out while acting (damaging or not).
+_PIVOT_MOVES = {
+    "uturn",
+    "voltswitch",
+    "flipturn",
+    "partingshot",
+    "teleport",
+    "chillyreception",
+    "shedtail",
+}
+# Types that can never get a status: Electric can't be paralysed, Fire can't be burned,
+# Poison and Steel can't be poisoned. (Grass ignores powder moves: checked separately.)
+_STATUS_IMMUNE_TYPES = {
+    "par": {"ELECTRIC"},
+    "brn": {"FIRE"},
+    "psn": {"POISON", "STEEL"},
+    "tox": {"POISON", "STEEL"},
+}
 # Standard Random Battle spread used for the rough speed comparison.
 _SPEED_EV = 85
 _SPEED_IV = 31
@@ -119,6 +158,96 @@ def _move_signals(move_id: str) -> tuple[bool, bool]:
     return setup, recovery
 
 
+@cache
+def _status_move(move_id: str) -> tuple[str, str, bool, bool] | None:
+    """(status, move type, is powder, ignores type immunity) for a status-inflicting move."""
+    move = GenData.from_gen(RANDOM_BATTLE_GENERATION).moves.get(move_id, {})
+    if move.get("category") != "Status" or move.get("target") not in {"normal", "any"}:
+        return None
+    status = move.get("status") or ("slp" if move.get("volatileStatus") == "yawn" else None)
+    if status is None:
+        return None
+    return (
+        status,
+        move.get("type", "").upper(),
+        bool(move.get("flags", {}).get("powder")),
+        bool(move.get("ignoreImmunity")),
+    )
+
+
+def _defending_types(dex: GenData, pokemon: PokemonView | None) -> tuple[str, ...]:
+    if pokemon and pokemon.terastallized and pokemon.tera_type:
+        tera = pokemon.tera_type.upper()
+        if tera in dex.type_chart:
+            return (tera,)
+    return _base_types(dex, pokemon)
+
+
+def _status_lands(dex: GenData, move_id: str, target: PokemonView | None) -> bool:
+    """Could this status move affect the target now (no status yet, no type immunity)?"""
+    info = _status_move(move_id)
+    if info is None or target is None or target.status:
+        return False
+    status, move_type, powder, ignores_immunity = info
+    types = set(_defending_types(dex, target))
+    if types & _STATUS_IMMUNE_TYPES.get(status, set()):
+        return False
+    if powder and "GRASS" in types:
+        return False
+    if not ignores_immunity and types and all(t in dex.type_chart for t in types):
+        # poke-env indexes the chart by defending type first; 0 means immune (Thunder Wave
+        # into a Ground type).
+        if prod(dex.type_chart[t].get(move_type, 1) for t in types) == 0:
+            return False
+    return True
+
+
+def _threat_features(dex: GenData, state: PublicState, belief) -> tuple[float, ...]:
+    """D7: how useful the acting player's non-damaging options are in this position.
+
+    Uses beliefs (the probability it has each move), so moves not yet seen still count.
+    "Useful" features take the most likely move that would actually work right now.
+    """
+    moves = belief.move_probs if belief else {}
+    target = state.me.active  # the acting player's target is the observer's active Pokemon
+    # Expected number of non-damaging moves in its set of four.
+    expected_status = sum(p for m, p in moves.items() if _move_is_status(m))
+    status_useful = max((p for m, p in moves.items() if _status_lands(dex, m, target)), default=0.0)
+    their_hazards = {to_id_str(k): v for k, v in state.me.side_conditions.items()}
+    hazard_useful = 0.0
+    if state.me.n_remaining > 1:  # hazards only matter if we still have Pokemon to switch in
+        hazard_useful = max(
+            (
+                p
+                for m, p in moves.items()
+                if m in _HAZARD_MOVES and their_hazards.get(m, 0) < _HAZARD_MOVES[m]
+            ),
+            default=0.0,
+        )
+    own_hazards = sum(v for k, v in state.opp.side_conditions.items() if to_id_str(k) in _HAZARDS)
+    removal_useful = (
+        max((p for m, p in moves.items() if m in _HAZARD_REMOVAL), default=0.0)
+        if own_hazards
+        else 0.0
+    )
+    return (
+        float(expected_status),
+        float(status_useful),
+        float(hazard_useful),
+        float(removal_useful),
+        float(max((p for m, p in moves.items() if m in _PROTECT_MOVES), default=0.0)),
+        float(moves.get("substitute", 0.0)),
+        float(max((p for m, p in moves.items() if m in _PIVOT_MOVES), default=0.0)),
+    )
+
+
+@cache
+def _move_is_status(move_id: str) -> bool:
+    return GenData.from_gen(RANDOM_BATTLE_GENERATION).moves.get(move_id, {}).get("category") == (
+        "Status"
+    )
+
+
 def _action_class(dex: GenData, action: Action | None) -> str | None:
     """The shared label rule (models/labels.py), or None when there is no usable action."""
     if action is None:
@@ -174,5 +303,6 @@ def build_features(state: PublicState, beliefs: BeliefState) -> FeatureRow:
         float(last_class == "attack"),
         float(last_class == "non_damaging"),
         float(last_class == "switch"),
+        *_threat_features(dex, state, belief),
     )
     return {name: float(value) for name, value in zip(FEATURE_NAMES, values, strict=True)}
