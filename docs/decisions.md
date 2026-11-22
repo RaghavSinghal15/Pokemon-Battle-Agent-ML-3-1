@@ -15,6 +15,15 @@ Template:
 
 ---
 
+## 2026-11-22: Allow PyTorch for the deep-learning comparison, inside `dl/` only (X4 #75, Raghav)
+**Decision:** `torch` may be imported only in `src/pokeagent/dl/`, installed with the optional
+`[dl]` extra. Nothing else imports from `dl/`, so `pip install -e ".[dev]"` and CI stay light.
+**Alternatives:** scikit-learn's MLPClassifier only (no sequence models); no deep learning.
+**Why:** the question we want to answer is whether a model that reads the whole game so far
+(a GRU or small transformer) predicts the opponent better than per-turn models. scikit-learn
+has no sequence models, so this needs a deep-learning library. Keeping it in one package keeps
+the core agent's install and the viva story simple.
+
 ## 2026-11-22: Puzzle positions with their own forecast, and the healing moves they exposed (V3 #73, Raghav with Claude)
 **Decision:** twelve hand-built positions in `eval/puzzles.py`, each with the accepted answer(s)
 and the forecast a strong player would expect (Blissey uses Seismic Toss 70% of the time, not a
