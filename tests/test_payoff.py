@@ -334,3 +334,51 @@ def test_exact_move_weights_split_each_class():
         table = build_payoff_table(battle, beliefs, forecast, move_weights={"nightshade": 1.0})
     probs = dict(zip([a.name for a in table.opp_actions], table.opp_probs, strict=True))
     assert 0 < probs["seismictoss"] < 0.001
+
+
+def tera_battle(tera_type="Ghost"):
+    """Blissey vs Blissey with Seismic Toss (Fighting), and tera still available."""
+    battle, beliefs = table_battle()
+    battle._can_tera = True
+    battle.active_pokemon._last_request = {"teraType": tera_type}
+    return battle, beliefs
+
+
+def test_tera_type_is_offered_only_when_allowed():
+    battle, _ = tera_battle()
+    assert payoff.our_tera_type(battle) == "ghost"
+    battle._can_tera = False
+    assert payoff.our_tera_type(battle) is None
+    battle, _ = tera_battle("Stellar")
+    assert payoff.our_tera_type(battle) is None  # Stellar does not change the defensive type
+    battle, _ = tera_battle()
+    battle.active_pokemon.terastallize("ghost")
+    assert payoff.our_tera_type(battle) is None  # already used
+
+
+def test_tera_rows_score_the_new_type(monkeypatch):
+    """F14: tera Ghost makes Blissey immune to Seismic Toss, so that row loses nothing."""
+    monkeypatch.setattr(payoff, "PAYOFF_TERA_COST", 0.0)
+    battle, beliefs = tera_battle()
+    table = build(battle, beliefs)
+    labels = [(a.name, a.tera) for a in table.our_actions]
+    assert labels == [("seismictoss", False), ("seismictoss", True)]
+    plain, tera = table.values
+    assert tera[0] > plain[0]  # their Seismic Toss no longer hurts us
+    # Without lasting effects, the gain is exactly the damage their Seismic Toss would do.
+    monkeypatch.setattr(payoff, "PAYOFF_EFFECT_TURNS", 0.0)
+    monkeypatch.setattr(payoff, "PAYOFF_HAZARD_WEIGHT", 0.0)
+    plain, tera = build(battle, beliefs).values
+    their_toss = 100 / battle.active_pokemon.stats["hp"]  # fixed damage = their level (100)
+    assert tera[0] - plain[0] == pytest.approx(their_toss)
+
+
+def test_tera_cost_is_charged_once_per_cell(monkeypatch):
+    monkeypatch.setattr(payoff, "PAYOFF_EFFECT_TURNS", 0.0)
+    monkeypatch.setattr(payoff, "PAYOFF_HAZARD_WEIGHT", 0.0)
+    battle, beliefs = tera_battle()
+    monkeypatch.setattr(payoff, "PAYOFF_TERA_COST", 0.0)
+    free = build(battle, beliefs).values[1]
+    monkeypatch.setattr(payoff, "PAYOFF_TERA_COST", 0.3)
+    costly = build(battle, beliefs).values[1]
+    assert costly == pytest.approx([v - 0.3 for v in free])

@@ -89,8 +89,8 @@ class ExplainableAgent(Player):
         candidates = battle.available_moves if action.kind == "move" else battle.available_switches
         for candidate in candidates:
             name = candidate.id if action.kind == "move" else candidate.species
-            if name == action.name and not action.tera:
-                return self.create_order(candidate)
+            if name == action.name and (not action.tera or battle.can_tera):
+                return self.create_order(candidate, terastallize=action.tera)
         raise ValueError(f"Decision is not currently legal: {action}")
 
     def _fallback(self, battle: Battle, reason: str) -> BattleOrder:

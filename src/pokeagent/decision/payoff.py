@@ -12,6 +12,7 @@ from poke_env.data import GenData, to_id_str
 from pokeagent.config import (
     PAYOFF_EFFECT_TURNS,
     PAYOFF_HAZARD_WEIGHT,
+    PAYOFF_TERA_COST,
     PAYOFF_UNSEEN_SAMPLES,
     RANDOM_BATTLE_GENERATION,
     RANDOM_BATTLE_TEAM_SIZE,
@@ -131,7 +132,8 @@ def build_payoff_table(
     calibrated choice prediction. Impossible classes are removed; missing information raises
     PayoffUnavailable rather than inventing moves or assigning a new uniform forecast.
     None forecasts support minimax. Emits PayoffApproximationWarning for omitted mechanics.
-    New voluntary tera options are deferred; already changed types are retained.
+    Our tera (F14): each move also appears as a tera row when tera is still available; the
+    opponent's tera is not modelled. Already changed types are retained.
     scorer (V4): a decision.value_utility.ValueScorer; cells are then the change in predicted
     P(win) instead of HP traded plus a knockout bonus.
     move_weights (E8): P(move | they use a move) from the exact-move model (E6). Within each
@@ -156,9 +158,28 @@ def build_payoff_table(
     )
 
 
+def our_tera_type(battle: Battle) -> str | None:
+    """The type our active Pokemon would become if it terastallized now, or None.
+
+    Tera is allowed once per battle. Our own tera type is in the server's request for our team
+    (our private knowledge, used for our own options only, never as a model input). Stellar
+    (Terapagos only) is left out: it does not change the Pokemon's defensive type.
+    """
+    me = battle.active_pokemon
+    if not battle.can_tera or me is None or me.is_terastallized:
+        return None
+    request = getattr(me, "_last_request", None) or {}
+    name = request.get("teraType") or (me.tera_type.name if me.tera_type else None)
+    if not name or name.lower() == "stellar":
+        return None
+    return name.lower()
+
+
 def _rows(battle: Battle, me_key: str) -> list:
-    """Our legal moves, then switches to living reserves."""
+    """Our legal moves, the same moves with tera (F14) if allowed, then switches."""
     rows = [(Action("move", m.id), me_key, m) for m in battle.available_moves]
+    if our_tera_type(battle):
+        rows += [(Action("move", m.id, tera=True), me_key, m) for m in battle.available_moves]
     for mon in battle.available_switches:
         if mon.max_hp <= 0 or mon.current_hp_fraction <= 0:
             continue
@@ -240,7 +261,7 @@ def _table(
     if opp is None or opp.fainted:
         raise PayoffUnavailable("Both active Pokemon must be alive and revealed")
     opp_key = next(k for k, mon in battle.opponent_team.items() if mon is opp)
-    if not rows or len({(a.kind, a.name) for a, _, _ in rows}) != len(rows):
+    if not rows or len({(a.kind, a.name, a.tera) for a, _, _ in rows}) != len(rows):
         raise PayoffUnavailable("Legal actions are empty or have duplicate labels")
     moves = _opponent_moves(battle, beliefs)
     if move_weights:
@@ -290,7 +311,7 @@ def _table(
     # copied Pokemon objects, but the same keys, moves and legal switches.
     next_rows = _rows(battle, me_key) if lookahead and not entering else []
 
-    def next_turn_value(state: Battle) -> float:
+    def next_turn_value(state: Battle, rows=None) -> float:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", PayoffApproximationWarning)
             inner = _table(
@@ -298,7 +319,7 @@ def _table(
                 beliefs,
                 class_probs,
                 me_key,
-                next_rows,
+                next_rows if rows is None else rows,
                 entering=False,
                 lookahead=False,
                 scorer=scorer,
@@ -334,6 +355,35 @@ def _table(
                 futures[key] = (value, effect.needs_user, effect.needs_target)
         return futures[key]
 
+    tera_type = our_tera_type(battle) if not entering else None
+    tera_terms: list[float] = []
+
+    def tera_term() -> float:
+        """F14: what terastallizing adds beyond this turn, the same for every tera row.
+
+        Tera lasts for the rest of the game, so (as for other lasting effects) it is worth the
+        change in next turn's table: our new type against their moves, minus the tera options
+        we give up. That one-turn look cannot see that tera might be better saved for another
+        Pokemon later, so a fixed cost PAYOFF_TERA_COST (in HP, converted like hazards) is
+        subtracted as well.
+        """
+        if not tera_terms:
+            # The cost is in HP; in value mode convert it to P(win) as for hazards.
+            value = -PAYOFF_TERA_COST * (scorer.hp_slope() if scorer else 1.0)
+            if lookahead and PAYOFF_EFFECT_TURNS:
+                state = scenario_copy(battle, me_key, opp_key)
+                state.active_pokemon.terastallize(tera_type)
+                state._can_tera = False
+                try:
+                    if not base:
+                        base.append(next_turn_value(battle))
+                    plain = [row for row in next_rows if not row[0].tera]
+                    value += PAYOFF_EFFECT_TURNS * (next_turn_value(state, plain) - base[0])
+                except PayoffUnavailable:
+                    pass
+            tera_terms.append(value)
+        return tera_terms[0]
+
     def with_future(effect, lasting, target_is_the_active_one):
         if lasting is None:
             return effect
@@ -344,10 +394,13 @@ def _table(
             effect, future=value, future_needs_user=needs_user, future_needs_target=needs_target
         )
 
-    def cell(our_key, their_key, our_move, their_move):
+    def cell(our_key, their_key, our_move, their_move, tera=False):
         scenario = scenario_copy(stage, our_key, their_key)
         their_unseen = their_key is None or their_key in stand_ins
         our_mon, their_mon = scenario.active_pokemon, scenario.opponent_active_pokemon
+        if tera:
+            # Tera happens before anyone moves: it changes our STAB and our weaknesses.
+            our_mon.terastallize(tera_type)
         losses = (
             entry_damage(our_mon, scenario, scenario.side_conditions)
             if entering or our_key != me_key
@@ -379,7 +432,8 @@ def _table(
                 ),
                 "start_value": scorer.win_probability(),
             }
-        return turn_value(
+        lasting_tera = tera_term() if tera else 0.0
+        return lasting_tera + turn_value(
             our_mon.current_hp_fraction,
             their_mon.current_hp_fraction if their_mon else 1,
             ours,
@@ -397,12 +451,13 @@ def _table(
 
     values = []
     try:
-        for _, our_key, our_move in rows:
-            row = [cell(our_key, opp_key, our_move, move) for move, _ in moves]
+        for action, our_key, our_move in rows:
+            tera = action.tera
+            row = [cell(our_key, opp_key, our_move, move, tera) for move, _ in moves]
             if reserves:
                 weight = sum(w for _, w in reserves)
                 row.append(
-                    sum(w * cell(our_key, target, our_move, None) for target, w in reserves)
+                    sum(w * cell(our_key, target, our_move, None, tera) for target, w in reserves)
                     / weight
                 )
             values.append(row)
@@ -413,7 +468,7 @@ def _table(
     warnings.warn(
         "Approximate payoffs: two damage endpoints and limited accuracy/order modifiers; "
         "lasting effects valued one turn ahead from the current HP; no chance-based "
-        "secondary effects, switch-in abilities, new tera choices, Grassy Terrain, Leech Seed "
+        "secondary effects, switch-in abilities, the opponent's tera, Grassy Terrain, Leech Seed "
         "or the HP left in a damaged Substitute. "
         "Candidate moves need not be exhaustive. Unseen switch targets are scored against "
         "sampled stand-in species. See docs/f4-implementation.md.",
