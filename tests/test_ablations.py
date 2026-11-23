@@ -28,7 +28,7 @@ def artifacts(tmp_path, monkeypatch):
 @pytest.mark.parametrize("variant", list(ablations.VARIANTS))
 def test_every_variant_builds_with_its_switch(variant, artifacts):
     agent = ablations.build_agent(variant, start_listening=False)
-    assert agent.strategy == ("lp" if variant == "lp" else "best_response")
+    assert agent.strategy == ("lp" if variant.startswith("lp") else "best_response")
     assert agent.utility == ("hp" if variant == "hp_utility" else "value")
     assert agent.belief_updates == (variant != "no_belief_updates")
     assert isinstance(agent, ablations.DamageOnlyAgent) == (variant == "damage_only")
@@ -52,3 +52,30 @@ def test_report_adds_up_chunks_per_variant(tmp_path):
     ]
     text = ablations.markdown(rows)
     assert "| full |" in text and "-10.0 pts" in text and "abc1234" in text
+
+
+def test_switched_off_restores_every_setting():
+    from pokeagent.agent import player
+    from pokeagent.decision import payoff
+
+    before = (
+        payoff.our_tera_type,
+        payoff.PAYOFF_ATTACK_TEMPERATURE,
+        player.PAYOFF_STAND_INS_FOR,
+        payoff.PAYOFF_EFFECT_TURNS,
+    )
+    with ablations.switched_off("no_tera"):
+        assert payoff.our_tera_type(object()) is None
+    with ablations.switched_off("no_attack_weighting"):
+        assert payoff.PAYOFF_ATTACK_TEMPERATURE == 0
+    with ablations.switched_off("lp_no_stand_ins"):
+        assert player.PAYOFF_STAND_INS_FOR == ()
+    with ablations.switched_off("no_lasting_effects"):
+        assert payoff.PAYOFF_EFFECT_TURNS == 0
+    after = (
+        payoff.our_tera_type,
+        payoff.PAYOFF_ATTACK_TEMPERATURE,
+        player.PAYOFF_STAND_INS_FOR,
+        payoff.PAYOFF_EFFECT_TURNS,
+    )
+    assert before == after
