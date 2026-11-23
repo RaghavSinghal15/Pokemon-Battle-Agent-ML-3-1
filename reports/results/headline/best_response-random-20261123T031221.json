@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "player_class": "ExplainableAgent",
+  "opponent_class": "RandomPlayer",
+  "format": "gen9randombattle",
+  "games": 250,
+  "wins": 248,
+  "losses": 2,
+  "ties": 0,
+  "win_rate": 0.992,
+  "ci_lower": 0.9713048854232084,
+  "ci_upper": 0.9978034088831621,
+  "interval_method": "wilson",
+  "z": 1.96,
+  "seed": 464,
+  "seed_scope": "Python/NumPy choices only; server teams are not seeded",
+  "source": {
+    "commit": "93615948a72f6c859dd657cbc45a702f197fa0d2",
+    "tracked_changes": true
+  },
+  "server_source": null,
+  "started_utc": "2026-11-23T03:12:22.596019+00:00",
+  "elapsed_seconds": 2626.5939433000167,
+  "python_version": "3.14.6",
+  "poke_env_version": "0.16.1",
+  "strategy": "best_response",
+  "opponent": "random",
+  "decisions": {
+    "best_response": 5772,
+    "baseline": 26
+  }
+}
