@@ -694,3 +694,20 @@ makes the expected payoff meaningful. A fixed tie rule makes experiments repeata
 adding randomness to this strategy. Tests use hand-calculated weighted averages, changed
 forecasts, negative payoffs, zero-probability columns and malformed inputs. Callers that want
 a uniform forecast must supply it; minimax is the separate strategy that needs no forecast.
+
+## A8: ladder runs follow Showdown's bot policy (2026-11-24)
+
+**Decision.** The ladder accounts are registered as bots by their owner before any ladder game.
+Each bot says it is a bot at the start of every game, plays one game at a time, and
+`--exclude-opponent` drops games our two accounts play against each other.
+
+**Why.** Since October 2026 Showdown requires bots to be registered (running an unregistered
+one is a bannable offence). A registered bot is matched only with players who opted in to
+playing bots, and with other bots, so ladder opponents are no longer a random sample of all
+players: some of them are other bots. We report this as a limitation rather than claiming
+"against humans" outright.
+
+**Alternatives.** (1) Ladder without registering: against the rules. (2) Only challenge
+volunteers (friends, the course): fewer games and a much narrower skill range.
+(3) Comparing win rates across the two accounts: the ladder pairs players of similar rating, so
+win rates drift towards 50%. We compare final ratings instead.

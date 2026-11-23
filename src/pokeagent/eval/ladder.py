@@ -3,6 +3,11 @@
 The ladder rates each account with Elo. After a rated game the server posts a line such as
 "Rag Bot's rating: 1043 &rarr; <strong>1061</strong>". poke-env keeps only the first number
 (the rating BEFORE the game), so we read the line ourselves to get the rating AFTER it.
+
+Showdown's bot policy (since October 2026): a bot must be registered by its owner, it is only
+matched with players who opted in to playing bots (and with other bots), and it should say
+it is a bot. The agent greets each opponent once per game for that reason. (Only registered
+accounts may chat in battles, so the greeting is silent on a local rehearsal.)
 """
 
 import re
@@ -11,6 +16,7 @@ from collections.abc import Iterable
 from poke_env.data.normalize import to_id_str
 
 from pokeagent.agent.player import ExplainableAgent
+from pokeagent.config import LADDER_GREETING
 from pokeagent.eval.stats import win_rate_ci
 
 RATING_LINE = re.compile(r"^(?P<name>.+)'s rating: (?P<before>\d+) &rarr; <strong>(?P<after>\d+)")
@@ -27,13 +33,19 @@ def parse_rating_change(raw: str) -> tuple[str, int, int] | None:
 class LadderAgent(ExplainableAgent):
     """The normal agent, plus a record of the rating changes the server announces."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, greeting: str | None = LADDER_GREETING, **kwargs):
         # battle tag -> user id -> (before, after)
         self.rating_changes: dict[str, dict[str, tuple[int, int]]] = {}
+        self.greeting = greeting
+        self._greeted: set[str] = set()
         super().__init__(*args, **kwargs)
 
     async def _handle_battle_message(self, split_messages):
         tag = split_messages[0][0].lstrip(">").strip()
+        if self.greeting and tag not in self._greeted:
+            # First message from a new battle room: say we are a bot, once per game.
+            self._greeted.add(tag)
+            await self.ps_client.send_message(self.greeting, room=tag)
         for message in split_messages[1:]:
             if len(message) > 2 and message[1] == "raw":
                 change = parse_rating_change(message[2])
@@ -59,9 +71,16 @@ def game_record(battle, changes: dict[str, tuple[int, int]], our_id: str) -> dic
     }
 
 
-def summarise(records: Iterable[dict]) -> dict:
-    """Win rate with a Wilson interval, the rating path and opponent ratings, no usernames."""
-    records = list(records)
+def summarise(records: Iterable[dict], exclude: Iterable[str] = ()) -> dict:
+    """Win rate with a Wilson interval, the rating path and opponent ratings, no usernames.
+
+    `exclude` lists opponent names whose games don't count, for example our own second
+    account: two of our bots can be matched with each other, and that is not a game
+    against a person.
+    """
+    excluded_ids = {to_id_str(name) for name in exclude}
+    all_records = list(records)
+    records = [record for record in all_records if record["opponent"] not in excluded_ids]
     if not records:
         raise ValueError("No finished ladder games to summarise")
     wins = sum(record["won"] for record in records)
@@ -83,4 +102,5 @@ def summarise(records: Iterable[dict]) -> dict:
         "rating_path": path,
         "opponent_rating_mean": sum(opponents) / len(opponents) if opponents else None,
         "mean_turns": sum(record["turns"] for record in records) / len(records),
+        "excluded_games": len(all_records) - len(records),
     }

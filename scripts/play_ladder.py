@@ -8,6 +8,12 @@ Usage:
     python scripts/play_ladder.py --games 20                    # model forecast, value utility
     python scripts/play_ladder.py --games 20 --utility hp       # the older HP-traded scoring
     python scripts/play_ladder.py --games 2 --local     # rehearsal on the local server
+    python scripts/play_ladder.py --games 5 --accept-from OWNER  # registration trial
+    python scripts/play_ladder.py --games 25 --exclude-opponent OTHERBOT  # skip our 2nd bot
+
+Showdown requires bots to be registered by their owner (/ht in chat, "Something else",
+"I want to register my bot"). Staff may first ask the bot to play its owner a few times:
+--accept-from accepts that many challenges from the owner instead of searching the ladder.
 
 Games are played one at a time. Per-game records, the explanation log and HTML replays go to
 data/interim/ladder/<run>/ (git-ignored: they name other players). The summary, with no
@@ -53,9 +59,17 @@ def agent_options(mode: str, utility: str) -> dict:
     return options
 
 
-async def main(games: int, strategy: str, mode: str, utility: str, local: bool) -> None:
+async def main(args) -> None:
+    games, strategy, mode, utility, local = (
+        args.games,
+        args.strategy,
+        args.mode,
+        args.utility,
+        args.local,
+    )
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    run = f"{stamp}-{mode}-{utility}-{strategy}"
+    trial = "-trial" if args.accept_from else ""
+    run = f"{stamp}-{mode}-{utility}-{strategy}{trial}"
     folder = LADDER_GAMES_DIR / run
     folder.mkdir(parents=True, exist_ok=True)
     options = {
@@ -92,7 +106,10 @@ async def main(games: int, strategy: str, mode: str, utility: str, local: bool) 
     start = time.time()
     with (folder / "explanations.log").open("w", encoding="utf-8") as stream:
         agent.explanation_stream = stream
-        if sparring is None:
+        if args.accept_from:
+            # Registration trial: unrated games against the owner only, never the ladder.
+            await agent.accept_challenges(args.accept_from, games)
+        elif sparring is None:
             await agent.ladder(games)
         else:
             await asyncio.gather(agent.ladder(games), sparring.ladder(games))
@@ -108,7 +125,7 @@ async def main(games: int, strategy: str, mode: str, utility: str, local: bool) 
             stream.write(json.dumps(record) + "\n")
     summary = {
         "run": run,
-        "server": "local" if local else "showdown",
+        "server": "local" if local else ("showdown-trial" if args.accept_from else "showdown"),
         "format": BATTLE_FORMAT,
         "mode": mode,
         "strategy": strategy,
@@ -117,7 +134,7 @@ async def main(games: int, strategy: str, mode: str, utility: str, local: bool) 
         "minutes": round((time.time() - start) / 60, 1),
         "decisions": dict(agent.decision_counts),
         "fallbacks": dict(agent.fallback_reasons),
-        **summarise(records),
+        **summarise(records, exclude=args.exclude_opponent),
     }
     LADDER_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     (LADDER_RESULTS_DIR / f"{run}.json").write_text(json.dumps(summary, indent=2), "utf-8")
@@ -135,5 +152,12 @@ if __name__ == "__main__":
     parser.add_argument("--mode", choices=("flat", "model"), default="model")
     parser.add_argument("--utility", choices=("value", "hp"), default="value")
     parser.add_argument("--local", action="store_true", help="rehearse on localhost:8000")
+    parser.add_argument("--accept-from", help="registration trial: accept challenges from OWNER")
+    parser.add_argument(
+        "--exclude-opponent",
+        action="append",
+        default=[],
+        help="don't count games against this account (our other bot); repeatable",
+    )
     args = parser.parse_args()
-    asyncio.run(main(args.games, args.strategy, args.mode, args.utility, args.local))
+    asyncio.run(main(args))
