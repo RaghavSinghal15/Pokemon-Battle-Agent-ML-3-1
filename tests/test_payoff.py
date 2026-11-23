@@ -77,9 +77,9 @@ def table_battle(moves=("seismictoss",), candidates=None):
     return battle, {"blissey": SetBelief("blissey", move_probs=candidates or {"seismictoss": 1})}
 
 
-def build(battle, beliefs, probs=None):
+def build(battle, beliefs, probs=None, **options):
     with pytest.warns(PayoffApproximationWarning):
-        return build_payoff_table(battle, beliefs, probs)
+        return build_payoff_table(battle, beliefs, probs, **options)
 
 
 def test_class_mass_mapping():
@@ -151,9 +151,8 @@ def add_reserve(battle, side):
     return reserve
 
 
-def test_unknown_and_known_switch_targets(monkeypatch):
-    """The old rule (no stand-ins): an attack into an unseen switch-in scores nothing."""
-    monkeypatch.setattr(payoff, "PAYOFF_UNSEEN_SAMPLES", 0)
+def test_unknown_and_known_switch_targets():
+    """Without stand-ins (the default): an attack into an unseen switch-in scores nothing."""
     battle, beliefs = table_battle()
     battle._team_size["p2"] = 6
     assert build(battle, beliefs).values[0][-1] == 0
@@ -173,10 +172,11 @@ def test_unseen_switch_in_is_scored_against_stand_ins(tmp_path, monkeypatch):
     battle, beliefs = table_battle()
     battle._team_size["p2"] = 6
     sets_file(tmp_path, monkeypatch, ["snorlax"])
-    assert build(battle, beliefs).values[0][-1] > 0
+    assert build(battle, beliefs, unseen_samples=8).values[0][-1] > 0
+    assert build(battle, beliefs).values[0][-1] == 0  # off by default
     # Ghosts are immune to Seismic Toss: a pool of only Gengar gives no credit again.
     sets_file(tmp_path, monkeypatch, ["gengar"])
-    assert build(battle, beliefs).values[0][-1] == 0
+    assert build(battle, beliefs, unseen_samples=8).values[0][-1] == 0
 
 
 def test_stand_ins_follow_the_species_clause_and_repeat_each_turn(tmp_path, monkeypatch):

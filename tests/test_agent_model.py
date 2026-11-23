@@ -54,8 +54,10 @@ def test_public_pipeline_passes_model_forecast_and_logs_real_strategy(strategy, 
     battle = public_turn()
     forecasts = []
 
-    def table_builder(battle, beliefs, forecast):
+    def table_builder(battle, beliefs, forecast, unseen_samples=0):
         forecasts.append(forecast)
+        # Stand-ins for unseen switch-ins are used by minimax only (F13).
+        assert bool(unseen_samples) == (strategy == "lp")
         assert beliefs["blissey"].move_probs
         return PayoffTable(
             [Action("move", "seismictoss")], [Action("move", "splash")], [[0.2]], [1]

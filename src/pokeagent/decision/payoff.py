@@ -13,7 +13,6 @@ from pokeagent.config import (
     PAYOFF_EFFECT_TURNS,
     PAYOFF_HAZARD_WEIGHT,
     PAYOFF_TERA_COST,
-    PAYOFF_UNSEEN_SAMPLES,
     RANDOM_BATTLE_GENERATION,
     RANDOM_BATTLE_TEAM_SIZE,
     SEED,
@@ -124,6 +123,7 @@ def build_payoff_table(
     class_probs: dict[str, float] | None,
     scorer=None,
     move_weights: dict[str, float] | None = None,
+    unseen_samples: int = 0,
 ) -> PayoffTable:
     """Compare legal moves/switches against candidate moves and one aggregate switch column.
 
@@ -139,6 +139,9 @@ def build_payoff_table(
     move_weights (E8): P(move | they use a move) from the exact-move model (E6). Within each
     action class, the class probability is split by these instead of by belief inclusion
     probabilities. Candidates the model did not score keep a tiny weight.
+    unseen_samples (F13): score an attack into a switch to a Pokemon we have not seen against
+    this many stand-in species (0 = such an attack does no damage). The agent turns it on
+    for minimax only; see PAYOFF_STAND_INS_FOR in config.py.
     """
     if not isinstance(battle, Battle) or battle.gen != 9 or battle.force_switch:
         raise PayoffUnavailable("A table requires a normal Gen 9 singles turn")
@@ -155,6 +158,7 @@ def build_payoff_table(
         entering=False,
         scorer=scorer,
         move_weights=move_weights,
+        unseen_samples=unseen_samples,
     )
 
 
@@ -249,6 +253,7 @@ def _table(
     lookahead=True,
     scorer=None,
     move_weights=None,
+    unseen_samples=0,
 ):
     """Score rows for our Pokemon at me_key against the opponent's active Pokemon.
 
@@ -285,8 +290,8 @@ def _table(
     # Battle pool, so an attack into a switch gets credit for the damage it would do. The
     # stand-ins live only on a private copy of the battle used to score cells.
     stage, stand_ins = battle, {}
-    if unseen and PAYOFF_UNSEEN_SAMPLES:
-        stand_ins = unseen_stand_ins(battle, PAYOFF_UNSEEN_SAMPLES, SEED)
+    if unseen and unseen_samples:
+        stand_ins = unseen_stand_ins(battle, unseen_samples, SEED)
     if stand_ins:
         stage = copy(battle)
         stage._opponent_team = {**battle.opponent_team, **stand_ins}
@@ -324,6 +329,7 @@ def _table(
                 lookahead=False,
                 scorer=scorer,
                 move_weights=move_weights,
+                unseen_samples=unseen_samples,
             )
         return _table_value(inner)
 
@@ -470,8 +476,8 @@ def _table(
         "lasting effects valued one turn ahead from the current HP; no chance-based "
         "secondary effects, switch-in abilities, the opponent's tera, Grassy Terrain, Leech Seed "
         "or the HP left in a damaged Substitute. "
-        "Candidate moves need not be exhaustive. Unseen switch targets are scored against "
-        "sampled stand-in species. See docs/f4-implementation.md.",
+        "Candidate moves need not be exhaustive. Unseen switch targets receive zero outgoing "
+        "credit unless stand-in species are requested. See docs/f4-implementation.md.",
         PayoffApproximationWarning,
         stacklevel=2,
     )
