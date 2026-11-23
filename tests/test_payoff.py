@@ -82,7 +82,9 @@ def build(battle, beliefs, probs=None, **options):
         return build_payoff_table(battle, beliefs, probs, **options)
 
 
-def test_class_mass_mapping():
+def test_class_mass_mapping(monkeypatch):
+    """Belief weights only (F15 off): Seismic Toss and Night Shade do the same damage anyway."""
+    monkeypatch.setattr(payoff, "PAYOFF_ATTACK_TEMPERATURE", 0.0)
     battle, beliefs = table_battle(
         candidates={"seismictoss": 0.75, "nightshade": 0.25, "protect": 1}
     )
@@ -382,3 +384,25 @@ def test_tera_cost_is_charged_once_per_cell(monkeypatch):
     monkeypatch.setattr(payoff, "PAYOFF_TERA_COST", 0.3)
     costly = build(battle, beliefs).values[1]
     assert costly == pytest.approx([v - 0.3 for v in free])
+
+
+def test_attacks_that_hurt_more_are_expected_more(monkeypatch):
+    """F15: a 4x super-effective attack gets more of the attack mass than a resisted one."""
+    battle = make_battle("Charizard", "Garchomp", ("flamethrower",))
+    battle._team_size = {"p1": 1, "p2": 1}
+    beliefs = {"garchomp": SetBelief("garchomp", move_probs={"stoneedge": 0.5, "firefang": 0.5})}
+    forecast = {"attack": 1.0, "non_damaging": 0.0, "switch": 0.0}
+
+    def probabilities():
+        table = build(battle, beliefs, forecast)
+        names = [a.name for a in table.opp_actions]
+        return dict(zip(names, table.opp_probs, strict=True))
+
+    monkeypatch.setattr(payoff, "PAYOFF_ATTACK_TEMPERATURE", 0.0)
+    flat = probabilities()
+    assert flat["stoneedge"] == pytest.approx(flat["firefang"])
+    monkeypatch.setattr(payoff, "PAYOFF_ATTACK_TEMPERATURE", 0.1)
+    weighted = probabilities()
+    # Stone Edge is 4x effective against Charizard; Fire Fang is resisted.
+    assert weighted["stoneedge"] > 0.9
+    assert sum(weighted.values()) == pytest.approx(1)
