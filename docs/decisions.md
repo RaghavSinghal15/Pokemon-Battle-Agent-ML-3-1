@@ -28,7 +28,8 @@ used only for our own options, never as a model input. The opponent's tera is no
 (tera when the type matchup score is above 1); learn when humans tera from the replays.
 **Why:** tera is the main Gen 9 mechanic and humans use it almost every game. Against
 SimpleHeuristicsPlayer, best response wins 794 of 1,000 with tera against 745 without
-(+4.9 points, p ~ 0.01), with the same code otherwise. The cost 0.25 is a first guess, not yet
+(+4.9 points, p ~ 0.01), with the same code otherwise. Minimax with stand-ins (F13) and tera
+wins 700 of 1,000, against 310 of 500 with stand-ins alone and 319 of 1,000 with neither. The cost 0.25 is a first guess, not yet
 tuned; learning tera timing from replays is a possible follow-up.
 
 ## 2026-11-23: Score attacks into an unseen switch-in against stand-in species, for minimax only (F13, Raghav with Claude)
