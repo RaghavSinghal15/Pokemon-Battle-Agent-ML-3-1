@@ -23,9 +23,9 @@ from pokeagent.eval.ablations import (
     ABLATION_RESULTS_DIR,
     VARIANTS,
     build_agent,
-    lasting_effects,
     markdown,
     summarise,
+    switched_off,
 )
 from pokeagent.eval.baselines import BASELINES
 from pokeagent.eval.tournament import run_matchup
@@ -53,9 +53,8 @@ async def play(variant: str, games: int) -> dict:
     )
     ABLATION_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     path = ABLATION_RESULTS_DIR / f"{variant}-{stamp}-{suffix}.json"
-    enabled = VARIANTS[variant][1].get("effects", True)
     try:
-        with lasting_effects(enabled):
+        with switched_off(variant):
             result = await run_matchup(agent, opponent, games, output_path=path)
     finally:
         await agent.ps_client.stop_listening()

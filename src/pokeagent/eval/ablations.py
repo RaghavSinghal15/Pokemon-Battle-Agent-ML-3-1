@@ -9,6 +9,7 @@ import pickle
 from contextlib import contextmanager
 from pathlib import Path
 
+from pokeagent.agent import player
 from pokeagent.agent.player import ExplainableAgent
 from pokeagent.config import (
     ARTIFACTS_DIR,
@@ -32,6 +33,15 @@ VARIANTS = {
     "no_opponent_model": ("E: forecast = class frequencies", {"model": "naive"}),
     "no_belief_updates": ("D: beliefs stay at the Random Battle prior", {"beliefs": False}),
     "damage_only": ("everything: highest calculated damage", {"damage_only": True}),
+    "no_tera": ("F14: we never terastallize", {"tera": False}),
+    "no_attack_weighting": (
+        "F15: their attacks weighted by belief only, not by damage to us",
+        {"attack_weighting": False},
+    ),
+    "lp_no_stand_ins": (
+        "F13: minimax, with no damage credit against unseen switch-ins",
+        {"strategy": "lp", "stand_ins": False},
+    ),
 }
 
 
@@ -75,6 +85,26 @@ def lasting_effects(enabled: bool):
         yield
     finally:
         payoff.PAYOFF_EFFECT_TURNS, payoff.PAYOFF_HAZARD_WEIGHT = saved
+
+
+@contextmanager
+def switched_off(variant: str):
+    """Temporarily switch off the parts of this variant that are module settings, not agent
+    options: lasting effects (F8-F10), our tera (F14), attack weighting (F15) and minimax's
+    stand-ins for unseen switch-ins (F13). Everything is restored afterwards."""
+    settings = VARIANTS[variant][1]
+    saved = (payoff.our_tera_type, payoff.PAYOFF_ATTACK_TEMPERATURE, player.PAYOFF_STAND_INS_FOR)
+    if not settings.get("tera", True):
+        payoff.our_tera_type = lambda battle: None
+    if not settings.get("attack_weighting", True):
+        payoff.PAYOFF_ATTACK_TEMPERATURE = 0.0
+    if not settings.get("stand_ins", True):
+        player.PAYOFF_STAND_INS_FOR = ()
+    try:
+        with lasting_effects(settings.get("effects", True)):
+            yield
+    finally:
+        payoff.our_tera_type, payoff.PAYOFF_ATTACK_TEMPERATURE, player.PAYOFF_STAND_INS_FOR = saved
 
 
 def summarise(results_dir: Path = ABLATION_RESULTS_DIR) -> list[dict]:
