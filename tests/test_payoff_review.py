@@ -6,12 +6,14 @@ import pytest
 from poke_env.battle import Move, Pokemon, Status
 from test_payoff import add_reserve, build, table_battle
 
+from pokeagent.decision import payoff
 from pokeagent.decision._payoff_state import move_effect, scenario_copy
 from pokeagent.decision._turn import TurnEffect, turn_value
 from pokeagent.decision.payoff import PayoffUnavailable, build_payoff_table
 
 
-def test_full_attack_pool_drops_status_and_switch_mass_without_changing_forecast():
+def test_full_attack_pool_drops_status_and_switch_mass_without_changing_forecast(monkeypatch):
+    monkeypatch.setattr(payoff, "PAYOFF_ATTACK_TEMPERATURE", 0.0)  # belief weights only (F15 off)
     battle, beliefs = table_battle(candidates={"seismictoss": 0.75, "nightshade": 0.25})
     forecast = {"attack": 1 / 3, "non_damaging": 1 / 3, "switch": 1 / 3}
     assert build(battle, beliefs, forecast).opp_probs == pytest.approx([0.25, 0.75])

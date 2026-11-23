@@ -10,6 +10,7 @@ from poke_env.battle import Battle, Move
 from poke_env.data import GenData, to_id_str
 
 from pokeagent.config import (
+    PAYOFF_ATTACK_TEMPERATURE,
     PAYOFF_EFFECT_TURNS,
     PAYOFF_HAZARD_WEIGHT,
     PAYOFF_TERA_COST,
@@ -79,6 +80,33 @@ def _opponent_moves(battle: Battle, beliefs: BeliefState) -> list[tuple[Move, fl
         ]
     except Exception as error:
         raise PayoffUnavailable(f"Invalid opponent move candidate: {error}") from error
+
+
+def _competent_weights(battle, me_key, opp_key, moves):
+    """F15: within their attacks, expect the ones that hurt us most.
+
+    A move's weight is still how likely they have it (the belief), now multiplied by
+    exp(expected damage to us / PAYOFF_ATTACK_TEMPERATURE). Damage is capped at our current HP,
+    so every move that knocks us out counts the same. Without this, a knockout move got only
+    its share of the attack probability, and healing into a knockout could look best (failure
+    analysis, cause A). Non-damaging moves keep their belief weights.
+    """
+    scenario = scenario_copy(battle, me_key, opp_key)
+    our_hp = scenario.active_pokemon.current_hp_fraction
+    weighted = []
+    for move, weight in moves:
+        try:
+            if move_class(move.id) != "attack":
+                weighted.append((move, weight))
+                continue
+            effect = move_effect(scenario, opp_key, me_key, move)
+        except (PayoffUnavailable, ValueError):
+            weighted.append((move, weight))  # unscorable: keep the belief weight
+            continue
+        low, high = effect.damage
+        hurt = min(our_hp, (low + high) / 2) * effect.hit_chance
+        weighted.append((move, weight * math.exp(hurt / PAYOFF_ATTACK_TEMPERATURE)))
+    return weighted
 
 
 def _probabilities(moves, switch_available, class_probs, complete_move_pool):
@@ -272,6 +300,8 @@ def _table(
     if move_weights:
         # The candidate list stays the same; only how the forecast is shared among them changes.
         moves = [(m, max(move_weights.get(m.id, 0.0), _UNSCORED_WEIGHT)) for m, _ in moves]
+    elif PAYOFF_ATTACK_TEMPERATURE:
+        moves = _competent_weights(battle, me_key, opp_key, moves)
     if not moves:
         raise PayoffUnavailable(
             "No opponent move candidates; supply public priors or revealed moves"

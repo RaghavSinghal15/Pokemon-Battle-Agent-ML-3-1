@@ -103,6 +103,11 @@ PAYOFF_HAZARD_WEIGHT = 1.0
 # 70%, so they are used for these strategies only (docs/decisions.md, F13).
 PAYOFF_UNSEEN_SAMPLES = 8
 PAYOFF_STAND_INS_FOR = ("lp",)
+# F15: within the opponent's attacks, a move's weight is multiplied by
+# exp(expected damage to us / this), so they are expected to pick the attacks that hurt most
+# (a 0.1 temperature makes a move doing 30% more of our HP about 20 times as likely).
+# 0 turns it off: attacks are then weighted only by how likely they have them.
+PAYOFF_ATTACK_TEMPERATURE = 0.1
 # Terastallizing can be done once per battle, by any one of our Pokemon. Using it now gives up
 # using it later, which the one-turn look ahead cannot see. Tera rows pay this cost, in
 # fractions of one Pokemon's HP (converted to P(win) like hazards). Tuned in games (F14).
