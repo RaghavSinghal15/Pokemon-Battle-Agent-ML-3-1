@@ -15,6 +15,7 @@ import asyncio
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from secrets import token_hex
 
 from poke_env import AccountConfiguration
 
@@ -43,17 +44,18 @@ class _Tee:
 async def main(games: int, out: Path, quiet: bool = False) -> None:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     out.mkdir(parents=True, exist_ok=True)
-    log_path = out / f"demo-{stamp}.log"
+    suffix = token_hex(3)  # unique Showdown names for runs started together
+    log_path = out / f"demo-{stamp}-{suffix}.log"
     with log_path.open("w", encoding="utf-8") as log:
         agent = build_agent(
             "full",
-            account_configuration=AccountConfiguration(f"demo{stamp[-6:]}", None),
+            account_configuration=AccountConfiguration(f"demo{suffix}", None),
             battle_format=BATTLE_FORMAT,
             explanation_stream=log if quiet else _Tee(sys.stdout, log),
             save_replays=str(out),
         )
         opponent = BASELINES["heuristics"](
-            account_configuration=AccountConfiguration(f"demoopp{stamp[-6:]}", None),
+            account_configuration=AccountConfiguration(f"demoopp{suffix}", None),
             battle_format=BATTLE_FORMAT,
         )
         await agent.battle_against(opponent, n_battles=games)

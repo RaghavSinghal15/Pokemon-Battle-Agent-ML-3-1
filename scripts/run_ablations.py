@@ -13,6 +13,7 @@ import argparse
 import asyncio
 import json
 from datetime import datetime, timezone
+from secrets import token_hex
 
 from poke_env import AccountConfiguration
 
@@ -34,7 +35,10 @@ CONCURRENT = 8
 
 async def play(variant: str, games: int) -> dict:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-    tag = f"{variant[:8]}{stamp[-6:]}"
+    # A random suffix, not the time: chunks started in the same second would otherwise share
+    # a Showdown name ("nametaken", and the run waits forever) and a result file.
+    suffix = token_hex(3)
+    tag = f"{variant[:8]}{suffix}"
     agent = build_agent(
         variant,
         account_configuration=AccountConfiguration(f"abl{tag}", None),
@@ -48,7 +52,7 @@ async def play(variant: str, games: int) -> dict:
         max_concurrent_battles=CONCURRENT,
     )
     ABLATION_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    path = ABLATION_RESULTS_DIR / f"{variant}-{stamp}.json"
+    path = ABLATION_RESULTS_DIR / f"{variant}-{stamp}-{suffix}.json"
     enabled = VARIANTS[variant][1].get("effects", True)
     try:
         with lasting_effects(enabled):
