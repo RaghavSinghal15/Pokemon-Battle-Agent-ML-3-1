@@ -128,3 +128,13 @@ def test_unexpected_programming_error_is_not_hidden(agent, monkeypatch):
 def test_invalid_strategy_rejected_before_connecting():
     with pytest.raises(ValueError, match="strategy"):
         ExplainableAgent(strategy="typo", start_listening=False)
+
+
+def test_a_tera_decision_becomes_a_tera_order(agent):
+    battle = make_battle("Blissey", "Blissey", ("seismictoss",))
+    battle._can_tera = True
+    order = agent._order(battle, Action("move", "seismictoss", tera=True))
+    assert order.terastallize and order.message.endswith("terastallize")
+    battle._can_tera = False  # used already: a tera decision is no longer legal
+    with pytest.raises(ValueError):
+        agent._order(battle, Action("move", "seismictoss", tera=True))

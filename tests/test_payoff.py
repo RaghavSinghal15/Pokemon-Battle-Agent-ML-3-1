@@ -1,12 +1,13 @@
 """Hand-calculated examples plus real poke-env adapters for the F4 scoring proposal."""
 
+import json
 from copy import deepcopy
 
 import pytest
 from poke_env.battle import Field, Move, Pokemon, SideCondition, Status
 from test_damage import make_battle
 
-from pokeagent.decision import _payoff_state
+from pokeagent.decision import _payoff_state, payoff
 from pokeagent.decision._payoff_state import entry_damage, first_probability, scenario_copy
 from pokeagent.decision._turn import TurnEffect, turn_value
 from pokeagent.decision.payoff import (
@@ -76,9 +77,9 @@ def table_battle(moves=("seismictoss",), candidates=None):
     return battle, {"blissey": SetBelief("blissey", move_probs=candidates or {"seismictoss": 1})}
 
 
-def build(battle, beliefs, probs=None):
+def build(battle, beliefs, probs=None, **options):
     with pytest.warns(PayoffApproximationWarning):
-        return build_payoff_table(battle, beliefs, probs)
+        return build_payoff_table(battle, beliefs, probs, **options)
 
 
 def test_class_mass_mapping():
@@ -151,11 +152,45 @@ def add_reserve(battle, side):
 
 
 def test_unknown_and_known_switch_targets():
+    """Without stand-ins (the default): an attack into an unseen switch-in scores nothing."""
     battle, beliefs = table_battle()
     battle._team_size["p2"] = 6
     assert build(battle, beliefs).values[0][-1] == 0
     add_reserve(battle, "p2")
     assert build(battle, beliefs).values[0][-1] == pytest.approx(0.25 / 5)
+
+
+def sets_file(tmp_path, monkeypatch, species):
+    """A tiny public sets file listing only these species (CI has no Showdown checkout)."""
+    path = tmp_path / f"sets-{'-'.join(species)}.json"
+    path.write_text(json.dumps({name: {"level": 80, "sets": []} for name in species}))
+    monkeypatch.setattr(_payoff_state, "RANDOM_BATTLE_SETS_PATH", path)
+
+
+def test_unseen_switch_in_is_scored_against_stand_ins(tmp_path, monkeypatch):
+    """F13: Seismic Toss into an unseen switch-in now does damage to a stand-in."""
+    battle, beliefs = table_battle()
+    battle._team_size["p2"] = 6
+    sets_file(tmp_path, monkeypatch, ["snorlax"])
+    assert build(battle, beliefs, unseen_samples=8).values[0][-1] > 0
+    assert build(battle, beliefs).values[0][-1] == 0  # off by default
+    # Ghosts are immune to Seismic Toss: a pool of only Gengar gives no credit again.
+    sets_file(tmp_path, monkeypatch, ["gengar"])
+    assert build(battle, beliefs, unseen_samples=8).values[0][-1] == 0
+
+
+def test_stand_ins_follow_the_species_clause_and_repeat_each_turn(tmp_path, monkeypatch):
+    battle, _ = table_battle()
+    sets_file(tmp_path, monkeypatch, ["blissey", "chansey", "snorlax", "gengar", "pikachu"])
+    first = _payoff_state.unseen_stand_ins(battle, 3, seed=1)
+    assert first.keys() == _payoff_state.unseen_stand_ins(battle, 3, seed=1).keys()
+    species = {mon.species for mon in first.values()}
+    assert len(species) == 3 and "blissey" not in species  # Blissey is already on their team
+    for key, mon in first.items():
+        assert battle.opponent_role is None or key.startswith(battle.opponent_role)
+        assert mon.level == 80 and mon.current_hp_fraction == 1
+    # Asking for more than the pool holds returns the whole pool.
+    assert len(_payoff_state.unseen_stand_ins(battle, 10, seed=1)) == 4
 
 
 def test_switch_incoming_target_and_hazards_once():
@@ -299,3 +334,51 @@ def test_exact_move_weights_split_each_class():
         table = build_payoff_table(battle, beliefs, forecast, move_weights={"nightshade": 1.0})
     probs = dict(zip([a.name for a in table.opp_actions], table.opp_probs, strict=True))
     assert 0 < probs["seismictoss"] < 0.001
+
+
+def tera_battle(tera_type="Ghost"):
+    """Blissey vs Blissey with Seismic Toss (Fighting), and tera still available."""
+    battle, beliefs = table_battle()
+    battle._can_tera = True
+    battle.active_pokemon._last_request = {"teraType": tera_type}
+    return battle, beliefs
+
+
+def test_tera_type_is_offered_only_when_allowed():
+    battle, _ = tera_battle()
+    assert payoff.our_tera_type(battle) == "ghost"
+    battle._can_tera = False
+    assert payoff.our_tera_type(battle) is None
+    battle, _ = tera_battle("Stellar")
+    assert payoff.our_tera_type(battle) is None  # Stellar does not change the defensive type
+    battle, _ = tera_battle()
+    battle.active_pokemon.terastallize("ghost")
+    assert payoff.our_tera_type(battle) is None  # already used
+
+
+def test_tera_rows_score_the_new_type(monkeypatch):
+    """F14: tera Ghost makes Blissey immune to Seismic Toss, so that row loses nothing."""
+    monkeypatch.setattr(payoff, "PAYOFF_TERA_COST", 0.0)
+    battle, beliefs = tera_battle()
+    table = build(battle, beliefs)
+    labels = [(a.name, a.tera) for a in table.our_actions]
+    assert labels == [("seismictoss", False), ("seismictoss", True)]
+    plain, tera = table.values
+    assert tera[0] > plain[0]  # their Seismic Toss no longer hurts us
+    # Without lasting effects, the gain is exactly the damage their Seismic Toss would do.
+    monkeypatch.setattr(payoff, "PAYOFF_EFFECT_TURNS", 0.0)
+    monkeypatch.setattr(payoff, "PAYOFF_HAZARD_WEIGHT", 0.0)
+    plain, tera = build(battle, beliefs).values
+    their_toss = 100 / battle.active_pokemon.stats["hp"]  # fixed damage = their level (100)
+    assert tera[0] - plain[0] == pytest.approx(their_toss)
+
+
+def test_tera_cost_is_charged_once_per_cell(monkeypatch):
+    monkeypatch.setattr(payoff, "PAYOFF_EFFECT_TURNS", 0.0)
+    monkeypatch.setattr(payoff, "PAYOFF_HAZARD_WEIGHT", 0.0)
+    battle, beliefs = tera_battle()
+    monkeypatch.setattr(payoff, "PAYOFF_TERA_COST", 0.0)
+    free = build(battle, beliefs).values[1]
+    monkeypatch.setattr(payoff, "PAYOFF_TERA_COST", 0.3)
+    costly = build(battle, beliefs).values[1]
+    assert costly == pytest.approx([v - 0.3 for v in free])

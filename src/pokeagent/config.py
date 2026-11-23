@@ -96,6 +96,17 @@ PAYOFF_EFFECT_TURNS = 1.0
 # turn 20); Heavy-Duty Boots and hazard removal (Rapid Spin, Defog) cancel some of that, so we
 # use 1.0. (Before measuring, this was a guessed 0.5.)
 PAYOFF_HAZARD_WEIGHT = 1.0
+# When the opponent may switch to a Pokemon we have not seen yet, our attack can be scored
+# against this many stand-in species drawn from the Random Battle pool (fixed per battle by
+# SEED). Without them, an attack into an unseen switch-in does no damage (F13). Measured in
+# games: stand-ins lift minimax from 32% to 62% wins but lower best response from 74.5% to
+# 70%, so they are used for these strategies only (docs/decisions.md, F13).
+PAYOFF_UNSEEN_SAMPLES = 8
+PAYOFF_STAND_INS_FOR = ("lp",)
+# Terastallizing can be done once per battle, by any one of our Pokemon. Using it now gives up
+# using it later, which the one-turn look ahead cannot see. Tera rows pay this cost, in
+# fractions of one Pokemon's HP (converted to P(win) like hazards). Tuned in games (F14).
+PAYOFF_TERA_COST = 0.25
 RANDOM_BATTLE_TEAM_SIZE = 6
 
 # Local Showdown server started with `node pokemon-showdown start --no-security`.

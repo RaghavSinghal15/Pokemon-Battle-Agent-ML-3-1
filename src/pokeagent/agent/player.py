@@ -10,7 +10,12 @@ from poke_env.player import BattleOrder, Player
 
 from pokeagent.agent.explain import format_turn
 from pokeagent.beliefs.tracker import beliefs_for, prior_belief
-from pokeagent.config import RANDOM_BATTLE_SETS_PATH, SEED
+from pokeagent.config import (
+    PAYOFF_STAND_INS_FOR,
+    PAYOFF_UNSEEN_SAMPLES,
+    RANDOM_BATTLE_SETS_PATH,
+    SEED,
+)
 from pokeagent.decision._validation import action_label
 from pokeagent.decision.damage import estimate_move_damage
 from pokeagent.decision.payoff import (
@@ -89,8 +94,8 @@ class ExplainableAgent(Player):
         candidates = battle.available_moves if action.kind == "move" else battle.available_switches
         for candidate in candidates:
             name = candidate.id if action.kind == "move" else candidate.species
-            if name == action.name and not action.tera:
-                return self.create_order(candidate)
+            if name == action.name and (not action.tera or battle.can_tera):
+                return self.create_order(candidate, terastallize=action.tera)
         raise ValueError(f"Decision is not currently legal: {action}")
 
     def _fallback(self, battle: Battle, reason: str) -> BattleOrder:
@@ -216,6 +221,8 @@ class ExplainableAgent(Player):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", PayoffApproximationWarning)
                 extra = {"scorer": scorer} if scorer is not None else {}
+                if self.strategy in PAYOFF_STAND_INS_FOR:
+                    extra["unseen_samples"] = PAYOFF_UNSEEN_SAMPLES
                 if self.exact_move_model is not None and state is not None:
                     extra["move_weights"] = self.exact_move_model.move_weights(state)
                 table = build_payoff_table(battle, beliefs, forecast, **extra)

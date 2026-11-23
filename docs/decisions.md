@@ -15,6 +15,40 @@ Template:
 
 ---
 
+## 2026-11-23: Our own tera as an option in the payoff table (F14, Raghav with Claude)
+**Decision:** while tera is still available, every move also appears as a "move + tera" row. In
+that row our Pokemon takes its tera type before anyone moves, so both our same-type attack
+bonus and our weaknesses change. A tera row also gets (a) the change in next turn's table with
+the new type (as for other lasting effects) and (b) minus a fixed cost
+`PAYOFF_TERA_COST = 0.25` of one Pokemon's HP, converted to P(win) like hazards, because using
+tera now gives up using it later, possibly on another Pokemon, which a one-turn look cannot
+see. Our tera type comes from the server's request for our own team: our private knowledge,
+used only for our own options, never as a model input. The opponent's tera is not modelled.
+**Alternatives:** never tera (as before); tera at the first chance; poke-env's heuristic
+(tera when the type matchup score is above 1); learn when humans tera from the replays.
+**Why:** tera is the main Gen 9 mechanic and humans use it almost every game. Against
+SimpleHeuristicsPlayer, best response wins 794 of 1,000 with tera against 745 without
+(+4.9 points, p ~ 0.01), with the same code otherwise. Minimax with stand-ins (F13) and tera
+wins 700 of 1,000, against 310 of 500 with stand-ins alone and 319 of 1,000 with neither. The cost 0.25 is a first guess, not yet
+tuned; learning tera timing from replays is a possible follow-up.
+
+## 2026-11-23: Score attacks into an unseen switch-in against stand-in species, for minimax only (F13, Raghav with Claude)
+**Decision:** when the opponent may switch to a Pokemon we have not seen, the switch column
+can score our attack against 8 stand-in species drawn from the Random Battle pool (at most one
+per base species, none already on their team, the same 8 for the whole battle, seeded by
+`SEED`). Before, such an attack did no damage at all. The agent uses stand-ins for minimax
+only (`PAYOFF_STAND_INS_FOR = ("lp",)`). To keep it fast, a cell now deep-copies only the two
+active Pokemon instead of both whole teams; tables are otherwise identical (checked on all 12
+puzzles, both utilities, maximum difference 0.0).
+**Alternatives:** keep zero credit; weight reserves by how likely a human is to bring each in
+(would need a switch-target model); one representative "average" Pokemon.
+**Why:** minimax plans for the worst case. With zero credit, "they switch and my attack does
+nothing" was always the worst case, so it played passively and won only 31.9% of 1,000
+games. With stand-ins it wins 310 of 500 (62.0%). Best response got worse with stand-ins
+(700 of 1,000 against 745, p ~ 0.03): crediting attacks into a 17% switch forecast makes it
+stay in and attack where switching out was better against this bot. So the change is
+applied where it helps. The puzzles are unchanged for the default (no stand-ins).
+
 ## 2026-11-23: Exact-move weights in the payoff table: available, off by default (E8, Raghav with Claude)
 **Decision:** the agent can split each action class's probability among the opponent's moves
 by the exact-move model (E6) instead of by belief inclusion probabilities
