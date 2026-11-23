@@ -14,6 +14,7 @@ import argparse
 import asyncio
 import json
 from datetime import datetime, timezone
+from secrets import token_hex
 
 from poke_env import AccountConfiguration
 
@@ -36,7 +37,8 @@ CONCURRENT = 8
 async def play(pairing: str, games: int) -> None:
     strategy, opponent_name = pairing.split(":")
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-    tag = f"{strategy[:2]}{opponent_name[:3]}{stamp[-6:]}"
+    suffix = token_hex(3)  # unique Showdown names and files for chunks started together
+    tag = f"{strategy[:2]}{opponent_name[:3]}{suffix}"
     agent = build_agent(
         STRATEGIES[strategy],
         account_configuration=AccountConfiguration(f"hl{tag}", None),
@@ -50,7 +52,7 @@ async def play(pairing: str, games: int) -> None:
         max_concurrent_battles=CONCURRENT,
     )
     HEADLINE_DIR.mkdir(parents=True, exist_ok=True)
-    path = HEADLINE_DIR / f"{strategy}-{opponent_name}-{stamp}.json"
+    path = HEADLINE_DIR / f"{strategy}-{opponent_name}-{stamp}-{suffix}.json"
     try:
         result = await run_matchup(agent, opponent, games, output_path=path)
     finally:
