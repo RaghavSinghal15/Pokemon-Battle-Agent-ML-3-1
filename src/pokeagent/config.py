@@ -46,6 +46,8 @@ AGENT_PIPELINE_RESULTS_DIR = REPORTS_DIR / "results" / "agent-pipeline-smoke"
 # (git-ignored); only the summary with no usernames goes to reports/.
 LADDER_GAMES_DIR = INTERIM_DIR / "ladder"
 LADDER_RESULTS_DIR = REPORTS_DIR / "results" / "ladder"
+# Sent once at the start of every public game, so opponents know they are playing a bot.
+LADDER_GREETING = "Hi! I'm a registered bot for a university machine-learning project. glhf!"
 
 # The Showdown format we play. "gen9randombattle" = Generation 9, singles, random teams.
 BATTLE_FORMAT = "gen9randombattle"
