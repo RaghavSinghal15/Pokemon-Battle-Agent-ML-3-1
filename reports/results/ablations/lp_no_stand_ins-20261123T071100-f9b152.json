@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "player_class": "ExplainableAgent",
+  "opponent_class": "SimpleHeuristicsPlayer",
+  "format": "gen9randombattle",
+  "games": 250,
+  "wins": 90,
+  "losses": 160,
+  "ties": 0,
+  "win_rate": 0.36,
+  "ci_lower": 0.30303128258888623,
+  "ci_upper": 0.4212061946410083,
+  "interval_method": "wilson",
+  "z": 1.96,
+  "seed": 464,
+  "seed_scope": "Python/NumPy choices only; server teams are not seeded",
+  "source": {
+    "commit": "ea612c6321d9744678d9c3f32d239755d71d7e7b",
+    "tracked_changes": false
+  },
+  "server_source": null,
+  "started_utc": "2026-11-23T07:11:00.802991+00:00",
+  "elapsed_seconds": 943.8702959929979,
+  "python_version": "3.13.18",
+  "poke_env_version": "0.16.1",
+  "variant": "lp_no_stand_ins",
+  "decisions": {
+    "lp": 8287,
+    "baseline": 46,
+    "default": 2
+  },
+  "fallbacks": {
+    "forced replacement could not be scored: PayoffUnavailable: No replacement could be scored;": 1
+  }
+}
