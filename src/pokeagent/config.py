@@ -96,6 +96,10 @@ PAYOFF_EFFECT_TURNS = 1.0
 # turn 20); Heavy-Duty Boots and hazard removal (Rapid Spin, Defog) cancel some of that, so we
 # use 1.0. (Before measuring, this was a guessed 0.5.)
 PAYOFF_HAZARD_WEIGHT = 1.0
+# When the opponent may switch to a Pokemon we have not seen yet, our attack is scored against
+# this many stand-in species drawn from the Random Battle pool (fixed per battle by SEED). 0
+# restores the old rule: an attack into an unseen switch-in does no damage (F13).
+PAYOFF_UNSEEN_SAMPLES = 8
 RANDOM_BATTLE_TEAM_SIZE = 6
 
 # Local Showdown server started with `node pokemon-showdown start --no-security`.

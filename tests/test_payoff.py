@@ -1,12 +1,13 @@
 """Hand-calculated examples plus real poke-env adapters for the F4 scoring proposal."""
 
+import json
 from copy import deepcopy
 
 import pytest
 from poke_env.battle import Field, Move, Pokemon, SideCondition, Status
 from test_damage import make_battle
 
-from pokeagent.decision import _payoff_state
+from pokeagent.decision import _payoff_state, payoff
 from pokeagent.decision._payoff_state import entry_damage, first_probability, scenario_copy
 from pokeagent.decision._turn import TurnEffect, turn_value
 from pokeagent.decision.payoff import (
@@ -150,12 +151,46 @@ def add_reserve(battle, side):
     return reserve
 
 
-def test_unknown_and_known_switch_targets():
+def test_unknown_and_known_switch_targets(monkeypatch):
+    """The old rule (no stand-ins): an attack into an unseen switch-in scores nothing."""
+    monkeypatch.setattr(payoff, "PAYOFF_UNSEEN_SAMPLES", 0)
     battle, beliefs = table_battle()
     battle._team_size["p2"] = 6
     assert build(battle, beliefs).values[0][-1] == 0
     add_reserve(battle, "p2")
     assert build(battle, beliefs).values[0][-1] == pytest.approx(0.25 / 5)
+
+
+def sets_file(tmp_path, monkeypatch, species):
+    """A tiny public sets file listing only these species (CI has no Showdown checkout)."""
+    path = tmp_path / f"sets-{'-'.join(species)}.json"
+    path.write_text(json.dumps({name: {"level": 80, "sets": []} for name in species}))
+    monkeypatch.setattr(_payoff_state, "RANDOM_BATTLE_SETS_PATH", path)
+
+
+def test_unseen_switch_in_is_scored_against_stand_ins(tmp_path, monkeypatch):
+    """F13: Seismic Toss into an unseen switch-in now does damage to a stand-in."""
+    battle, beliefs = table_battle()
+    battle._team_size["p2"] = 6
+    sets_file(tmp_path, monkeypatch, ["snorlax"])
+    assert build(battle, beliefs).values[0][-1] > 0
+    # Ghosts are immune to Seismic Toss: a pool of only Gengar gives no credit again.
+    sets_file(tmp_path, monkeypatch, ["gengar"])
+    assert build(battle, beliefs).values[0][-1] == 0
+
+
+def test_stand_ins_follow_the_species_clause_and_repeat_each_turn(tmp_path, monkeypatch):
+    battle, _ = table_battle()
+    sets_file(tmp_path, monkeypatch, ["blissey", "chansey", "snorlax", "gengar", "pikachu"])
+    first = _payoff_state.unseen_stand_ins(battle, 3, seed=1)
+    assert first.keys() == _payoff_state.unseen_stand_ins(battle, 3, seed=1).keys()
+    species = {mon.species for mon in first.values()}
+    assert len(species) == 3 and "blissey" not in species  # Blissey is already on their team
+    for key, mon in first.items():
+        assert battle.opponent_role is None or key.startswith(battle.opponent_role)
+        assert mon.level == 80 and mon.current_hp_fraction == 1
+    # Asking for more than the pool holds returns the whole pool.
+    assert len(_payoff_state.unseen_stand_ins(battle, 10, seed=1)) == 4
 
 
 def test_switch_incoming_target_and_hazards_once():

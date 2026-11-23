@@ -12,8 +12,10 @@ from poke_env.data import GenData, to_id_str
 from pokeagent.config import (
     PAYOFF_EFFECT_TURNS,
     PAYOFF_HAZARD_WEIGHT,
+    PAYOFF_UNSEEN_SAMPLES,
     RANDOM_BATTLE_GENERATION,
     RANDOM_BATTLE_TEAM_SIZE,
+    SEED,
 )
 from pokeagent.decision._payoff_state import (
     PayoffUnavailable,
@@ -25,6 +27,7 @@ from pokeagent.decision._payoff_state import (
     residual,
     scenario_copy,
     substitute_hp,
+    unseen_stand_ins,
 )
 from pokeagent.decision._turn import turn_value
 from pokeagent.interfaces import ACTION_CLASSES, Action, BeliefState, PayoffTable, PokemonView
@@ -257,7 +260,17 @@ def _table(
     # Observed |teamsize| metadata, never the opponent's hidden team request.
     team_size = battle._team_size.get(battle.opponent_role, RANDOM_BATTLE_TEAM_SIZE)
     unseen = max(0, team_size - len(observed))
-    if unseen:
+    # F13: an unseen switch-in is scored as an average over stand-in species from the Random
+    # Battle pool, so an attack into a switch gets credit for the damage it would do. The
+    # stand-ins live only on a private copy of the battle used to score cells.
+    stage, stand_ins = battle, {}
+    if unseen and PAYOFF_UNSEEN_SAMPLES:
+        stand_ins = unseen_stand_ins(battle, PAYOFF_UNSEEN_SAMPLES, SEED)
+    if stand_ins:
+        stage = copy(battle)
+        stage._opponent_team = {**battle.opponent_team, **stand_ins}
+        reserves.extend((key, unseen / len(stand_ins)) for key in stand_ins)
+    elif unseen:
         reserves.append((None, unseen))
     belief = belief_for(opp.species, beliefs)
     probs = _probabilities(moves, bool(reserves), class_probs, bool(belief and belief.move_probs))
@@ -332,7 +345,8 @@ def _table(
         )
 
     def cell(our_key, their_key, our_move, their_move):
-        scenario = scenario_copy(battle, our_key, their_key)
+        scenario = scenario_copy(stage, our_key, their_key)
+        their_unseen = their_key is None or their_key in stand_ins
         our_mon, their_mon = scenario.active_pokemon, scenario.opponent_active_pokemon
         losses = (
             entry_damage(our_mon, scenario, scenario.side_conditions)
@@ -355,10 +369,13 @@ def _table(
         value_terms = {}
         if scorer is not None:
             value_terms = {
+                # For an unseen switch-in the value model keeps the current matchup with their
+                # HP at full (it cannot read a Pokemon that has not been revealed); the stand-in
+                # only decides how much damage our move does.
                 "end_value": scorer.end_value(
                     None if our_key == me_key else _view(our_mon),
-                    None if their_key in (opp_key, None) else _view(their_mon),
-                    unseen=their_key is None,
+                    None if their_key == opp_key or their_unseen else _view(their_mon),
+                    unseen=their_unseen,
                 ),
                 "start_value": scorer.win_probability(),
             }
@@ -398,8 +415,8 @@ def _table(
         "lasting effects valued one turn ahead from the current HP; no chance-based "
         "secondary effects, switch-in abilities, new tera choices, Grassy Terrain, Leech Seed "
         "or the HP left in a damaged Substitute. "
-        "Candidate moves need not be exhaustive. Unseen switch targets receive zero outgoing "
-        "credit. See docs/f4-implementation.md.",
+        "Candidate moves need not be exhaustive. Unseen switch targets are scored against "
+        "sampled stand-in species. See docs/f4-implementation.md.",
         PayoffApproximationWarning,
         stacklevel=2,
     )

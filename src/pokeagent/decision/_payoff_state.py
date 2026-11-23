@@ -1,8 +1,11 @@
 """Convert copied live state into inputs for the provisional one-turn scoring policy."""
 
+import json
 import math
+import random
 from copy import copy, deepcopy
 from dataclasses import dataclass
+from functools import lru_cache
 
 from poke_env.battle import (
     Battle,
@@ -17,9 +20,13 @@ from poke_env.battle import (
     Weather,
 )
 from poke_env.calc.damage_calc_gen9 import calculate_damage
-from poke_env.data import to_id_str
+from poke_env.data import GenData, to_id_str
 
-from pokeagent.config import PAYOFF_FREEZE_ACT_CHANCE, PAYOFF_SLEEP_ACT_CHANCE
+from pokeagent.config import (
+    PAYOFF_FREEZE_ACT_CHANCE,
+    PAYOFF_SLEEP_ACT_CHANCE,
+    RANDOM_BATTLE_SETS_PATH,
+)
 from pokeagent.decision._turn import TurnEffect
 from pokeagent.decision.damage import random_battle_stats
 
@@ -29,9 +36,20 @@ class PayoffUnavailable(ValueError):
 
 
 def scenario_copy(battle: Battle, our_key: str, opp_key: str | None) -> Battle:
-    """Copy team objects, activate chosen combatants and fill only their missing stats."""
+    """Copy team objects, activate chosen combatants and fill only their missing stats.
+
+    Only the two chosen Pokemon are deep-copied (their stats, HP and boosts may be changed on
+    the copy). The others are shallow copies: we only flip their "active" flag and read them.
+    Deep-copying both whole teams for every cell was most of the table's running time.
+    """
     result = copy(battle)
-    result._team, result._opponent_team = deepcopy(battle.team), deepcopy(battle.opponent_team)
+    result._team = {
+        key: deepcopy(mon) if key == our_key else copy(mon) for key, mon in battle.team.items()
+    }
+    result._opponent_team = {
+        key: deepcopy(mon) if key == opp_key else copy(mon)
+        for key, mon in battle.opponent_team.items()
+    }
     for team, selected in ((result.team, our_key), (result.opponent_team, opp_key)):
         for key, mon in team.items():
             mon._active = key == selected
@@ -447,3 +465,58 @@ def hazard_value(before: Battle, after: Battle, unseen_opponents: int) -> float:
         return loss
 
     return (total(after, False) - total(before, False)) - (total(after, True) - total(before, True))
+
+
+UNSEEN_NAME_PREFIX = "Unseen-"  # names of stand-ins for Pokemon the opponent has not shown
+
+
+@lru_cache(maxsize=2)
+def _random_battle_levels(path) -> dict[str, int]:
+    """Every Gen 9 Random Battle species with its level (from the public sets file).
+
+    Empty if the file is missing (CI has no Showdown checkout): no stand-ins are drawn then.
+    """
+    try:
+        with path.open(encoding="utf-8") as source:
+            data = json.load(source)
+    except FileNotFoundError:
+        return {}
+    dex = GenData.from_gen(9).pokedex
+    return {
+        to_id_str(name): entry["level"]
+        for name, entry in data.items()
+        if to_id_str(name) in dex and "level" in entry
+    }
+
+
+def unseen_stand_ins(battle: Battle, count: int, seed: int) -> dict[str, Pokemon]:
+    """Stand-in Pokemon for the opponent's unseen team members, keyed like team members.
+
+    Random Battle teams are drawn from a pool of about 500 species with at most one of each
+    base species per team, so an unseen Pokemon is (roughly) any pool species not already
+    on their team. We draw `count` of them, the same ones for every turn of a battle, and
+    give each the Random Battle level and full HP. Item and ability stay unknown, as for any
+    unrevealed Pokemon. Only public information is used.
+    """
+    levels = _random_battle_levels(RANDOM_BATTLE_SETS_PATH)
+    dex = GenData.from_gen(9).pokedex
+    taken = set()
+    for mon in battle.opponent_team.values():
+        entry = dex.get(mon.species, {})
+        taken.add(to_id_str(entry.get("baseSpecies", "")) or mon.species)
+    pool = []
+    for species in sorted(levels):
+        base = to_id_str(dex[species].get("baseSpecies", "")) or species
+        if base not in taken:
+            pool.append(species)
+    # A string seed gives the same draw on every platform and Python run.
+    rng = random.Random(f"{seed}-{battle.battle_tag}")
+    # Keys look like real ones ("p2: Name") because poke-env reads the side from the prefix.
+    role = battle.opponent_role or "p2"
+    stand_ins = {}
+    for species in rng.sample(pool, min(count, len(pool))):
+        mon = Pokemon(gen=9, species=species)
+        mon._level = levels[species]
+        mon._max_hp = mon._current_hp = 100  # opponent HP is shown in percent
+        stand_ins[f"{role}: {UNSEEN_NAME_PREFIX}{species}"] = mon
+    return stand_ins
