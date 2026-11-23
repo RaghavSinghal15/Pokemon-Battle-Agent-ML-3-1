@@ -711,3 +711,20 @@ players: some of them are other bots. We report this as a limitation rather than
 volunteers (friends, the course): fewer games and a much narrower skill range.
 (3) Comparing win rates across the two accounts: the ladder pairs players of similar rating, so
 win rates drift towards 50%. We compare final ratings instead.
+
+## DL3: the MLP is played in the agent, the GRU is not (2026-11-24)
+
+**Decision.** For the agent games of the deep-learning comparison, the full agent's LightGBM
+forecast is swapped for DL1's MLP and nothing else changes. DL2's GRU is compared on the test
+split only.
+
+**Why.** The MLP takes one turn's features, exactly like LightGBM, so it drops in. The GRU
+needs the opponent's earlier actions as a sequence; the live agent would have to rebuild that
+history every turn, which is new code in the parser and agent for a model that is no better
+than LightGBM on validation. The ablations also show that against the heuristics bot the
+forecast barely changes the win rate (class frequencies do as well as LightGBM), so games
+cannot separate two good forecasts anyway; the test-split metrics are the real comparison.
+
+**Alternatives.** (1) Build the live history and play the GRU: more code, and the games would
+show no difference for the reason above. (2) Play no deep model: the plan asked for games,
+and the MLP costs nothing extra to plug in.
