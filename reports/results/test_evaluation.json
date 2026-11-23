@@ -1,0 +1,262 @@
+{
+  "split": "test",
+  "opponent_model": {
+    "rows": 129486,
+    "hidden_rows": 13205,
+    "games": 2412,
+    "chosen": "lightgbm_hidden",
+    "results": {
+      "naive": {
+        "model": "naive (class frequencies)",
+        "rows": 129486,
+        "hidden_rows": 13205,
+        "all_turns_log_loss": 0.8972913346361123,
+        "switch_log_loss": 0.4605312578838912,
+        "actual_switch_share": 0.17228117325425144,
+        "mean_predicted_switch": 0.19000670678211595,
+        "visible_only": {
+          "model": "naive (class frequencies)",
+          "rows": 116281,
+          "log_loss": 0.975258083441038,
+          "accuracy": 0.5741006699288792,
+          "macro_f1": 0.2431444108145121,
+          "confusion_matrix": [
+            [
+              66757,
+              0,
+              0
+            ],
+            [
+              27216,
+              0,
+              0
+            ],
+            [
+              22308,
+              0,
+              0
+            ]
+          ],
+          "mean_predicted": {
+            "attack": 0.5768584079928417,
+            "non_damaging": 0.23313488522397666,
+            "switch": 0.19000670678232576
+          }
+        },
+        "switch_ece": 0.025238249694947718
+      },
+      "naive_hidden": {
+        "model": "naive (class frequencies, hidden folded)",
+        "rows": 129486,
+        "hidden_rows": 13205,
+        "all_turns_log_loss": 0.8962598372707548,
+        "switch_log_loss": 0.45949976051853364,
+        "actual_switch_share": 0.17228117325425144,
+        "mean_predicted_switch": 0.17023095799937382,
+        "visible_only": {
+          "model": "naive (class frequencies, hidden folded)",
+          "rows": 116281,
+          "log_loss": 0.9768487047686547,
+          "accuracy": 0.5741006699288792,
+          "macro_f1": 0.2431444108145121,
+          "confusion_matrix": [
+            [
+              66757,
+              0,
+              0
+            ],
+            [
+              27216,
+              0,
+              0
+            ],
+            [
+              22308,
+              0,
+              0
+            ]
+          ],
+          "mean_predicted": {
+            "attack": 0.5909422369021589,
+            "non_damaging": 0.23882680509652857,
+            "switch": 0.1702309579995692
+          }
+        },
+        "switch_ece": 0.03609482925447433
+      },
+      "logistic_regression": {
+        "model": "logistic regression (C=0.01)",
+        "rows": 129486,
+        "hidden_rows": 13205,
+        "all_turns_log_loss": 0.7607172313307409,
+        "switch_log_loss": 0.39577718084959074,
+        "actual_switch_share": 0.17228117325425144,
+        "mean_predicted_switch": 0.19256955934330725,
+        "visible_only": {
+          "model": "logistic regression (C=0.01)",
+          "rows": 116281,
+          "log_loss": 0.8162031264575714,
+          "accuracy": 0.6250720238044049,
+          "macro_f1": 0.507361183133833,
+          "confusion_matrix": [
+            [
+              57372,
+              5756,
+              3629
+            ],
+            [
+              16673,
+              8936,
+              1607
+            ],
+            [
+              13368,
+              2564,
+              6376
+            ]
+          ],
+          "mean_predicted": {
+            "attack": 0.575952374102757,
+            "non_damaging": 0.2336494971111496,
+            "switch": 0.19039812878609333
+          }
+        },
+        "switch_ece": 0.022615460076379927
+      },
+      "lightgbm": {
+        "model": "LightGBM (255 leaves)",
+        "rows": 129486,
+        "hidden_rows": 13205,
+        "all_turns_log_loss": 0.6777418337025566,
+        "switch_log_loss": 0.3611033831438313,
+        "actual_switch_share": 0.17228117325425144,
+        "mean_predicted_switch": 0.1978922131478938,
+        "visible_only": {
+          "model": "LightGBM (255 leaves)",
+          "rows": 116281,
+          "log_loss": 0.7134471434015387,
+          "accuracy": 0.6800767107266019,
+          "macro_f1": 0.6055412015905149,
+          "confusion_matrix": [
+            [
+              56412,
+              5883,
+              4462
+            ],
+            [
+              12493,
+              12845,
+              1878
+            ],
+            [
+              10163,
+              2322,
+              9823
+            ]
+          ],
+          "mean_predicted": {
+            "attack": 0.5788191004864552,
+            "non_damaging": 0.2302817020560051,
+            "switch": 0.19089919745753242
+          }
+        },
+        "switch_ece": 0.025611039893642353
+      },
+      "lightgbm_hidden": {
+        "model": "LightGBM (255 leaves, hidden folded)",
+        "rows": 129486,
+        "hidden_rows": 13205,
+        "all_turns_log_loss": 0.6693107565674408,
+        "switch_log_loss": 0.35220490769196033,
+        "actual_switch_share": 0.17228117325425144,
+        "mean_predicted_switch": 0.17064213312049165,
+        "visible_only": {
+          "model": "LightGBM (255 leaves, hidden folded)",
+          "rows": 116281,
+          "log_loss": 0.723119593136798,
+          "accuracy": 0.6727926316423147,
+          "macro_f1": 0.584360801505864,
+          "confusion_matrix": [
+            [
+              57403,
+              6053,
+              3301
+            ],
+            [
+              12767,
+              12924,
+              1525
+            ],
+            [
+              11831,
+              2571,
+              7906
+            ]
+          ],
+          "mean_predicted": {
+            "attack": 0.5928074104080158,
+            "non_damaging": 0.23536628905018522,
+            "switch": 0.17182630054178685
+          }
+        },
+        "switch_ece": 0.0046631903169116135
+      }
+    },
+    "paired_bootstrap_all_turns": {
+      "lightgbm_hidden - naive_hidden": {
+        "difference": -0.22694908070331415,
+        "ci95": [
+          -0.23075317248099722,
+          -0.22322081504146618
+        ]
+      },
+      "lightgbm_hidden - logistic_regression": {
+        "difference": -0.09140647476330024,
+        "ci95": [
+          -0.09424653763911842,
+          -0.08854620172289542
+        ]
+      },
+      "lightgbm_hidden - lightgbm": {
+        "difference": -0.008431077135115908,
+        "ci95": [
+          -0.009589153739644078,
+          -0.007256017540952684
+        ]
+      }
+    }
+  },
+  "value_model": {
+    "rows": 116281,
+    "used_by_agent": "logistic_regression",
+    "results": {
+      "team_hp": {
+        "rows": 116281,
+        "log_loss": 0.6134660265698736,
+        "brier": 0.21365452090672632,
+        "accuracy": 0.646098674761999,
+        "auc": 0.7136022535759159,
+        "ece": 0.00930039505450292,
+        "mirror_gap": 0.028355835975402054
+      },
+      "logistic_regression": {
+        "rows": 116281,
+        "log_loss": 0.5897647574470799,
+        "brier": 0.20394585285047337,
+        "accuracy": 0.667030727289927,
+        "auc": 0.7422360376134753,
+        "ece": 0.007424930075427505,
+        "mirror_gap": 0.03043016957224908
+      },
+      "lightgbm": {
+        "rows": 116281,
+        "log_loss": 0.5803782498127442,
+        "brier": 0.20000177287928111,
+        "accuracy": 0.6758541808205983,
+        "auc": 0.7532944000135748,
+        "ece": 0.008861219542793551,
+        "mirror_gap": 0.030592258119738085
+      }
+    }
+  }
+}
