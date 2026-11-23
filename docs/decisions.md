@@ -15,6 +15,22 @@ Template:
 
 ---
 
+## 2026-11-23: Expect the opponent's attacks that hurt us most (F15 #118, Raghav with Claude)
+**Decision:** within the attack class, a candidate move's weight is its belief inclusion
+probability times exp(expected damage to us / `PAYOFF_ATTACK_TEMPERATURE`), with damage capped
+at our current HP (every knockout counts the same) and temperature 0.1. Non-damaging moves keep
+their belief weights; the class probabilities from the opponent model are unchanged.
+**Alternatives:** belief weights only (as before); always assume their single strongest attack;
+the exact-move model (E6), which learns human move choice.
+**Why:** the failure analysis found that healing or setting up into a knockout lost 5 of 17
+games: a knockout move got only its share of the attack probability, so Roost or Recover could
+look best. Both the bot and humans pick the move that knocks us out. Against
+SimpleHeuristicsPlayer, best response wins 1,653 of 2,000 (82.7%) with this against 794 of
+1,000 (79.4%) without (p ~ 0.03). Puzzles: 11/12 (HP utility) and 12/12 (value utility), as
+before. A softmax keeps some weight on weaker attacks, unlike "always the strongest", because
+the opponent does not always know which move hurts most. Minimax is unaffected: it ignores the
+forecast probabilities.
+
 ## 2026-11-23: Our own tera as an option in the payoff table (F14, Raghav with Claude)
 **Decision:** while tera is still available, every move also appears as a "move + tera" row. In
 that row our Pokemon takes its tera type before anyone moves, so both our same-type attack
