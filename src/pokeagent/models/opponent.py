@@ -148,6 +148,18 @@ def train_naive(train: pd.DataFrame, classes=ACTION_CLASSES) -> OpponentModel:
     return OpponentModel(name, class_frequencies=counts / counts.sum(), classes=classes)
 
 
+def all_turn_losses(model: OpponentModel, table: pd.DataFrame, probs=None) -> np.ndarray:
+    """The all-turns log loss of every row, in the table's row order (see evaluate_all_turns)."""
+    if probs is None:
+        probs = model.predict_proba_table(table)
+    hidden = (table[LABEL] == HIDDEN).to_numpy()
+    p = np.empty(len(table))
+    truth = _y(table[~hidden])
+    p[~hidden] = probs[~hidden][np.arange(len(truth)), truth]
+    p[hidden] = 1 - probs[hidden][:, ACTION_CLASSES.index("switch")]
+    return -np.log(np.clip(p, 1e-15, 1))
+
+
 def evaluate_all_turns(model: OpponentModel, table: pd.DataFrame) -> dict:
     """Score the three-class forecast on every turn, visible and hidden.
 
@@ -158,11 +170,7 @@ def evaluate_all_turns(model: OpponentModel, table: pd.DataFrame) -> dict:
     probs = model.predict_proba_table(table)
     hidden = (table[LABEL] == HIDDEN).to_numpy()
     switch = ACTION_CLASSES.index("switch")
-    visible_truth = _y(table[~hidden])
-    p_visible = probs[~hidden][np.arange(len(visible_truth)), visible_truth]
-    p_hidden = 1 - probs[hidden][:, switch]
-    eps = 1e-15
-    losses = -np.log(np.clip(np.concatenate([p_visible, p_hidden]), eps, 1))
+    losses = all_turn_losses(model, table, probs)
     switched = (table[LABEL] == "switch").to_numpy()
     return {
         "model": model.name,
