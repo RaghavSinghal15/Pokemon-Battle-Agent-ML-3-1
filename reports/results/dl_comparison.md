@@ -8,7 +8,7 @@ Test split, scored once; all-turns log loss is the headline metric (uniform gues
 | Naive (class frequencies) | 0.8963 | 0.574 | 0.243 | 0.036 | - | trivial: the same frequencies every turn |
 | Logistic regression | 0.7607 | 0.625 | 0.507 | 0.023 | 0.1 | high: one weight per feature and class, readable directly |
 | LightGBM | 0.6777 | 0.680 | 0.606 | 0.026 | - | medium: gain per feature overall, tree paths per prediction |
-| LightGBM, hidden class (used) | 0.6693 | 0.673 | 0.584 | 0.005 | 8.5 | medium: gain per feature overall, tree paths per prediction |
+| LightGBM, hidden class (used) | 0.6693 | 0.673 | 0.584 | 0.005 | 8.4 | medium: gain per feature overall, tree paths per prediction |
 | MLP (DL1) | 0.6816 | 0.666 | 0.573 | 0.004 | 64.6 | low: 2 hidden layers, needs post-hoc tools (e.g. SHAP) per prediction |
 | GRU over the game (DL2) | 0.6779 | 0.670 | 0.587 | 0.007 | 83.8 | lowest: depends on the whole game so far through a recurrent state |
 
@@ -22,13 +22,13 @@ Paired bootstrap over games (positive = the used LightGBM is worse):
 
 ## Agent games against SimpleHeuristicsPlayer (best response, everything else equal)
 
-| Opponent model | Games | Wins | Win rate | 95% interval |
-|---|---|---|---|---|
-| MLP (DL1) | 1000 | 841 | 84.1% | 81.7% to 86.2% |
-| LightGBM, hidden class (used) | 1000 | 813 | 81.3% | 78.8% to 83.6% |
-| Naive (class frequencies) | 1000 | 836 | 83.6% | 81.2% to 85.8% |
+| Opponent model | Games | Wins | Win rate | 95% interval | p vs LightGBM |
+|---|---|---|---|---|---|
+| LightGBM, hidden class (used) | 1000 | 813 | 81.3% | 78.8% to 83.6% |  |
+| GRU over the game (DL2) | 1000 | 818 | 81.8% | 79.3% to 84.1% | 0.77 |
+| MLP (DL1) | 1000 | 841 | 84.1% | 81.7% to 86.2% | 0.10 |
+| Logistic regression | 1000 | 834 | 83.4% | 81.0% to 85.6% | 0.22 |
+| Naive (class frequencies) | 1000 | 836 | 83.6% | 81.2% to 85.8% | 0.18 |
 
-MLP vs LightGBM: two-proportion z-test p = 0.10.
-
-The GRU is not played: it needs the opponent's earlier actions as a sequence, which the
-live agent does not build (docs/decisions.md, DL3).
+p: two-proportion z-test against the LightGBM agent. The GRU plays as
+dl.sequence_agent.SequenceAgent, which rebuilds the opponent's history every turn.
