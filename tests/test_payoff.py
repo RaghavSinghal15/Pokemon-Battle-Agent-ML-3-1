@@ -455,3 +455,21 @@ def test_attacks_that_hurt_more_are_expected_more(monkeypatch):
     # Stone Edge is 4x effective against Charizard; Fire Fang is resisted.
     assert weighted["stoneedge"] > 0.9
     assert sum(weighted.values()) == pytest.approx(1)
+
+
+def test_expected_end_skips_likely_knockouts():
+    from pokeagent.decision.payoff import _expected_end
+
+    assert _expected_end([(0.5, 0.6, 0.4), (0.5, 0.8, 0.2)]) == pytest.approx((0.7, 0.3))
+    # A knockout is more likely than not: the next turn faces another Pokemon, so no leaf.
+    assert _expected_end([(0.4, 0.6, 0.4), (0.6, 0.0, 0.2)]) is None
+
+
+def test_two_turn_search_keeps_the_table_shape_and_only_changes_move_cells():
+    battle, beliefs = table_battle(("seismictoss", "softboiled"))
+    battle._available_switches = [add_reserve(battle, "p1")]
+    plain = build(battle, beliefs, {"attack": 1, "non_damaging": 0, "switch": 0})
+    searched = build(battle, beliefs, {"attack": 1, "non_damaging": 0, "switch": 0}, search=True)
+    assert searched.our_actions == plain.our_actions and searched.opp_actions == plain.opp_actions
+    switch_row = [a.kind for a in plain.our_actions].index("switch")
+    assert searched.values[switch_row] == plain.values[switch_row]  # switches are not expanded

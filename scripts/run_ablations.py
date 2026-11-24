@@ -63,6 +63,7 @@ async def play(variant: str, games: int) -> dict:
     record.update(
         variant=variant,
         decisions=dict(agent.decision_counts),
+        mean_decision_seconds=sum(agent.decision_seconds) / max(1, len(agent.decision_seconds)),
         fallbacks={k[:90]: v for k, v in agent.fallback_reasons.items()},
     )
     path.write_text(json.dumps(record, indent=2), encoding="utf-8")

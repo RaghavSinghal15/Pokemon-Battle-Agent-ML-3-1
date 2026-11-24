@@ -81,6 +81,7 @@ def turn_value(
     substitutes: tuple[float, float] = (0.0, 0.0),
     end_value=None,
     start_value: float | None = None,
+    end_states: list | None = None,
 ) -> float:
     """Average utility after HP capping, KO cancellation and hit/miss/order branches.
 
@@ -92,6 +93,9 @@ def turn_value(
     outcome is worth end_value(end) - start_value instead of HP traded plus the KO bonus.
     start_value is P(win) now; every row of a table must share it, so pass it explicitly when
     rows face different Pokemon (switches). It defaults to end_value at the starting HP.
+
+    end_states (F12): if a list is given, each branch appends (probability, our HP, their HP)
+    at the end of the turn, so a two-turn search can continue from where this turn ends.
     """
     numbers = (our_hp, opp_hp, our_first, *entry_losses, ko_bonus, *residuals, *substitutes)
     if not all(math.isfinite(x) for x in numbers):
@@ -174,4 +178,6 @@ def turn_value(
                     continue  # e.g. a status on a Pokemon that fainted does nothing
                 utility += effect.future
             value += chance * utility
+            if end_states is not None:
+                end_states.append((chance, hp[0], hp[1]))
     return value

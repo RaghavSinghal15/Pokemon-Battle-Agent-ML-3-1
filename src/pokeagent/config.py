@@ -132,6 +132,12 @@ PAYOFF_HIDDEN_ITEM_DAMAGE = {
 # PAYOFF_STALL_EPSILON of zero, the one-turn table cannot see a way forward: switch instead.
 PAYOFF_STALL_TURNS = 3
 PAYOFF_STALL_EPSILON = 5e-4
+# F12 (#70): two-turn search. Expand our best rows x their most likely moves; each expanded
+# cell gains DISCOUNT * (next turn's table value from the end-of-turn HP - from the HP now).
+PAYOFF_SEARCH = False  # the agent's default; the "two_turn" ablation turns it on
+PAYOFF_SEARCH_ROWS = 3
+PAYOFF_SEARCH_COLUMNS = 2
+PAYOFF_SEARCH_DISCOUNT = 1.0
 RANDOM_BATTLE_TEAM_SIZE = 6
 
 # Local Showdown server started with `node pokemon-showdown start --no-security`.

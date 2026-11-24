@@ -13,6 +13,9 @@ from pokeagent.config import (
     PAYOFF_ATTACK_TEMPERATURE,
     PAYOFF_EFFECT_TURNS,
     PAYOFF_HAZARD_WEIGHT,
+    PAYOFF_SEARCH_COLUMNS,
+    PAYOFF_SEARCH_DISCOUNT,
+    PAYOFF_SEARCH_ROWS,
     PAYOFF_TERA_COST,
     RANDOM_BATTLE_GENERATION,
     RANDOM_BATTLE_TEAM_SIZE,
@@ -153,6 +156,7 @@ def build_payoff_table(
     scorer=None,
     move_weights: dict[str, float] | None = None,
     unseen_samples: int = 0,
+    search: bool = False,
 ) -> PayoffTable:
     """Compare legal moves/switches against candidate moves and one aggregate switch column.
 
@@ -171,6 +175,7 @@ def build_payoff_table(
     unseen_samples (F13): score an attack into a switch to a Pokemon we have not seen against
     this many stand-in species (0 = such an attack does no damage). The agent turns it on
     for minimax only; see PAYOFF_STAND_INS_FOR in config.py.
+    search (F12): look one more turn ahead for the most promising cells (_two_turn_search).
     """
     if not isinstance(battle, Battle) or battle.gen != 9 or battle.force_switch:
         raise PayoffUnavailable("A table requires a normal Gen 9 singles turn")
@@ -188,7 +193,74 @@ def build_payoff_table(
         scorer=scorer,
         move_weights=move_weights,
         unseen_samples=unseen_samples,
+        search=search,
     )
+
+
+def _expected_end(branches: list) -> tuple[float, float] | None:
+    """Mean (our HP, their HP) at the end of the turn, over branches where both survive.
+
+    None when a knockout is more likely than not: the one-turn value already scores the
+    knockout, and the next turn would face a different Pokemon.
+    """
+    total = sum(chance for chance, _, _ in branches)
+    alive = [(chance, ours, theirs) for chance, ours, theirs in branches if ours > 0 < theirs]
+    survive = sum(chance for chance, _, _ in alive)
+    if total <= 0 or survive / total < 0.5:
+        return None
+    ours = sum(chance * hp for chance, hp, _ in alive) / survive
+    theirs = sum(chance * hp for chance, _, hp in alive) / survive
+    return ours, theirs
+
+
+def _set_hp(mon, fraction: float) -> None:
+    mon._current_hp = max(1, round(fraction * mon.max_hp))
+
+
+def _two_turn_search(battle, me_key, opp_key, rows, values, probs, ends, next_turn_value):
+    """F12: look one more turn ahead for the most promising (our move, their move) cells.
+
+    The one-turn table stops when the turn ends. For our PAYOFF_SEARCH_ROWS best move rows and
+    the opponent's PAYOFF_SEARCH_COLUMNS most likely moves, take the HP both Pokemon are
+    expected to have at the end of the turn, build next turn's table from there, and add
+    PAYOFF_SEARCH_DISCOUNT * (its value - the value of next turn's table from the HP as now).
+    So a cell gains if it leaves us better placed next turn (e.g. still faster, out of KO
+    range) and loses if it leaves us worse placed, on top of what it does this turn. The
+    correction has the same form as lasting effects (F8), so every cell stays on one scale.
+
+    Bounded on purpose: only our move rows (a switch row would need the new Pokemon's legal
+    moves) and only the opponent's active Pokemon's move columns are expanded, and next
+    turn's table does not search again.
+    """
+    weights = (
+        np.full(len(values[0]), 1 / len(values[0]))
+        if probs is None
+        else np.asarray(probs, dtype=float)
+    )
+    expected = np.asarray(values, dtype=float) @ weights
+    move_rows = [i for i, (_, key, move) in enumerate(rows) if key == me_key and move is not None]
+    best_rows = sorted(move_rows, key=lambda i: -expected[i])[:PAYOFF_SEARCH_ROWS]
+    move_columns = [j for j in range(len(values[0])) if ends.get((0, j)) is not None]
+    likely = sorted(move_columns, key=lambda j: -weights[j])[:PAYOFF_SEARCH_COLUMNS]
+    try:
+        base = next_turn_value(battle)
+    except PayoffUnavailable:
+        return values
+    searched = [list(row) for row in values]
+    for i in best_rows:
+        for j in likely:
+            end = _expected_end(ends.get((i, j)) or [])
+            if end is None:
+                continue
+            state = scenario_copy(battle, me_key, opp_key)
+            _set_hp(state.active_pokemon, end[0])
+            _set_hp(state.opponent_active_pokemon, end[1])
+            try:
+                leaf = next_turn_value(state)
+            except PayoffUnavailable:
+                continue
+            searched[i][j] = values[i][j] + PAYOFF_SEARCH_DISCOUNT * (leaf - base)
+    return searched
 
 
 def our_tera_type(battle: Battle) -> str | None:
@@ -283,13 +355,14 @@ def _table(
     scorer=None,
     move_weights=None,
     unseen_samples=0,
+    search=False,
 ):
     """Score rows for our Pokemon at me_key against the opponent's active Pokemon.
 
     entering=True charges hazard damage on every row, because that Pokemon is arriving.
     lookahead=True values lasting effects (stat changes, status, hazards) by how much they
     change next turn's table (F8); the inner tables use lookahead=False, so it goes one turn
-    deep only.
+    deep only. search=True adds the two-turn correction (F12, _two_turn_search below).
     """
     opp = battle.opponent_active_pokemon
     if opp is None or opp.fainted:
@@ -432,7 +505,7 @@ def _table(
             effect, future=value, future_needs_user=needs_user, future_needs_target=needs_target
         )
 
-    def cell(our_key, their_key, our_move, their_move, tera=False):
+    def cell(our_key, their_key, our_move, their_move, tera=False, ends=None):
         scenario = scenario_copy(stage, our_key, their_key)
         their_unseen = their_key is None or their_key in stand_ins
         our_mon, their_mon = scenario.active_pokemon, scenario.opponent_active_pokemon
@@ -486,14 +559,20 @@ def _table(
                 substitute_hp(our_mon) if our_key == me_key else 0.0,
                 substitute_hp(their_mon) if their_key == opp_key else 0.0,
             ),
+            end_states=ends,
             **value_terms,
         )
 
     values = []
+    # (row, column) -> end-of-turn (probability, our HP, their HP) branches, for F12.
+    ends: dict[tuple[int, int], list] = {}
     try:
-        for action, our_key, our_move in rows:
+        for i, (action, our_key, our_move) in enumerate(rows):
             tera = action.tera
-            row = [cell(our_key, opp_key, our_move, move, tera) for move, _ in moves]
+            row = []
+            for j, (move, _) in enumerate(moves):
+                ends[i, j] = [] if search else None
+                row.append(cell(our_key, opp_key, our_move, move, tera, ends[i, j]))
             if reserves:
                 weight = sum(w for _, w in reserves)
                 row.append(
@@ -505,6 +584,10 @@ def _table(
         raise
     except Exception as error:
         raise PayoffUnavailable(f"Could not score this turn: {error}") from error
+    if search and lookahead and not entering:
+        values = _two_turn_search(
+            battle, me_key, opp_key, rows, values, probs, ends, next_turn_value
+        )
     warnings.warn(
         "Approximate payoffs: two damage endpoints and limited accuracy/order modifiers; "
         "lasting effects valued one turn ahead from the current HP; no chance-based "
