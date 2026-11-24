@@ -2,13 +2,14 @@
 
     python -m pokeagent.dl.play_games --model mlp --games 250
     python -m pokeagent.dl.play_games --model logistic_regression --games 250
+    python -m pokeagent.dl.play_games --model gru --games 250
 
 Everything else is the full agent of the ablation runs (same payoff table, beliefs, value
 utility, tera), so its win rate compares directly with the "full" ablation row, which uses
 LightGBM. Lives in dl/ because unpickling the MLP needs torch.
 
-The GRU (DL2) is not played: it needs the opponent's earlier actions as a sequence, and the
-live agent only builds one turn's features (docs/decisions.md, DL3).
+The GRU (DL2) needs the opponent's earlier turns, so it plays as dl.sequence_agent's
+SequenceAgent, which rebuilds that history from the battle log every turn.
 """
 
 import argparse
@@ -21,11 +22,12 @@ from secrets import token_hex
 from poke_env import AccountConfiguration
 
 from pokeagent.config import ARTIFACTS_DIR, BATTLE_FORMAT, REPORTS_DIR, SEED
+from pokeagent.dl.sequence_agent import SequenceAgent
 from pokeagent.eval.ablations import build_agent, switched_off
 from pokeagent.eval.baselines import BASELINES
 from pokeagent.eval.tournament import run_matchup
 
-MODELS = ("mlp", "logistic_regression")  # saved as artifacts/opponent_model_<name>.pkl
+MODELS = ("mlp", "logistic_regression", "gru")  # saved as artifacts/opponent_model_<name>.pkl
 GAMES_DIR = REPORTS_DIR / "results" / "dl_games"
 CONCURRENT = 8
 
@@ -35,6 +37,7 @@ async def play(model: str, games: int) -> None:
     suffix = token_hex(3)  # unique Showdown names for chunks started together
     agent = build_agent(
         "full",
+        agent_class=SequenceAgent if model == "gru" else None,
         account_configuration=AccountConfiguration(f"dl{model[:4]}{suffix}", None),
         battle_format=BATTLE_FORMAT,
         max_concurrent_battles=CONCURRENT,

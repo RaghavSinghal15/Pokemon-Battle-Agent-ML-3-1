@@ -712,19 +712,21 @@ volunteers (friends, the course): fewer games and a much narrower skill range.
 (3) Comparing win rates across the two accounts: the ladder pairs players of similar rating, so
 win rates drift towards 50%. We compare final ratings instead.
 
-## DL3: the MLP is played in the agent, the GRU is not (2026-11-24)
+## DL3: every opponent model plays in the agent, the GRU through a live history (2026-11-24)
 
 **Decision.** For the agent games of the deep-learning comparison, the full agent's LightGBM
-forecast is swapped for DL1's MLP and nothing else changes. DL2's GRU is compared on the test
-split only.
+forecast is swapped for another model and nothing else changes: logistic regression and DL1's
+MLP drop straight in (they read one turn's features). DL2's GRU needs the opponent's earlier
+turns, so `dl/sequence_agent.py` rebuilds them every turn from the battle log poke-env has
+received, with the parser walk (`parser.replay.choices_so_far`) and feature code that built the
+training sequences. The agent got one hook for this, `ExplainableAgent._forecast`.
 
-**Why.** The MLP takes one turn's features, exactly like LightGBM, so it drops in. The GRU
-needs the opponent's earlier actions as a sequence; the live agent would have to rebuild that
-history every turn, which is new code in the parser and agent for a model that is no better
-than LightGBM on validation. The ablations also show that against the heuristics bot the
-forecast barely changes the win rate (class frequencies do as well as LightGBM), so games
-cannot separate two good forecasts anyway; the test-split metrics are the real comparison.
+**Why.** Rebuilding the history with the training code, rather than tracking it separately in
+the agent, guarantees the GRU sees live inputs made the same way as its training inputs
+(labels follow models/labels.py; hidden and locked turns are treated as in training). Games
+are short (about 30 turns), so re-parsing the log each turn is cheap.
 
-**Alternatives.** (1) Build the live history and play the GRU: more code, and the games would
-show no difference for the reason above. (2) Play no deep model: the plan asked for games,
-and the MLP costs nothing extra to plug in.
+**Alternatives.** (1) Track the history incrementally in the agent: faster, but a second
+implementation of the label rule that could drift from training. (2) Test-split metrics only,
+no games: the plan asked for games, and showing that games against the bot barely separate
+forecasts is itself a result.

@@ -189,6 +189,14 @@ class ExplainableAgent(Player):
         )
         return self._record(battle, decision)
 
+    def _forecast(self, battle: Battle, state, beliefs) -> dict[str, float]:
+        """The opponent model's class probabilities for this turn.
+
+        A per-turn model needs only this turn's features. A subclass can override this to use
+        more of the game (dl.sequence_agent does, for the GRU that reads the whole game).
+        """
+        return self.opponent_model.predict_proba(build_features(state, beliefs))
+
     def choose_move(self, battle: AbstractBattle) -> BattleOrder:
         """Choose from the table, or record why a legal fallback was needed."""
         if not isinstance(battle, Battle) or battle.gen != 9:
@@ -209,7 +217,7 @@ class ExplainableAgent(Player):
                     beliefs = beliefs_for(state)
                 else:
                     beliefs = {p.species: prior_belief(p.species) for p in state.opp.pokemon}
-                forecast = self.opponent_model.predict_proba(build_features(state, beliefs))
+                forecast = self._forecast(battle, state, beliefs)
             else:
                 beliefs = flat_beliefs(battle)
                 forecast = dict.fromkeys(ACTION_CLASSES, 1 / len(ACTION_CLASSES))

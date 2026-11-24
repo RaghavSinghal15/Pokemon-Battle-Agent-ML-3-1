@@ -143,6 +143,8 @@ def _totals(paths) -> tuple[int, int]:
 def game_results(games_dir=GAMES_DIR, ablation_dir=ABLATION_RESULTS_DIR) -> dict:
     rows = {
         "mlp": _totals(sorted(games_dir.glob("mlp-*.json"))),
+        "gru": _totals(sorted(games_dir.glob("gru-*.json"))),
+        "logistic_regression": _totals(sorted(games_dir.glob("logistic_regression-*.json"))),
         REFERENCE: _totals(sorted(ablation_dir.glob("full-*.json"))),
         "naive_hidden": _totals(sorted(ablation_dir.glob("no_opponent_model-*.json"))),
     }
@@ -152,12 +154,13 @@ def game_results(games_dir=GAMES_DIR, ablation_dir=ABLATION_RESULTS_DIR) -> dict
             continue
         rate, low, high = win_rate_ci(wins, games)
         result[key] = {"games": games, "wins": wins, "win_rate": rate, "ci95": [low, high]}
-    if "mlp" in result and REFERENCE in result:
+    if REFERENCE in result:
         r = result[REFERENCE]
-        m = result["mlp"]
-        result["mlp_vs_reference_p"] = two_proportion_p(
-            m["wins"], m["games"], r["wins"], r["games"]
-        )
+        result["p_vs_reference"] = {
+            key: two_proportion_p(g["wins"], g["games"], r["wins"], r["games"])
+            for key, g in result.items()
+            if key != REFERENCE and isinstance(g, dict) and "games" in g
+        }
     return result
 
 
@@ -198,26 +201,23 @@ def markdown(report: dict) -> str:
         "",
         "## Agent games against SimpleHeuristicsPlayer (best response, everything else equal)",
         "",
-        "| Opponent model | Games | Wins | Win rate | 95% interval |",
-        "|---|---|---|---|---|",
+        "| Opponent model | Games | Wins | Win rate | 95% interval | p vs LightGBM |",
+        "|---|---|---|---|---|---|",
     ]
-    for key in ("mlp", REFERENCE, "naive_hidden"):
+    p_values = games.get("p_vs_reference", {})
+    for key in (REFERENCE, "gru", "mlp", "logistic_regression", "naive_hidden"):
         if key in games:
             g = games[key]
             low, high = g["ci95"]
+            p = f"{p_values[key]:.2f}" if key in p_values else ""
             lines.append(
                 f"| {names[key]} | {g['games']} | {g['wins']} | {g['win_rate']:.1%} |"
-                f" {low:.1%} to {high:.1%} |"
+                f" {low:.1%} to {high:.1%} | {p} |"
             )
-    if "mlp_vs_reference_p" in games:
-        lines += [
-            "",
-            f"MLP vs LightGBM: two-proportion z-test p = {games['mlp_vs_reference_p']:.2f}.",
-        ]
     lines += [
         "",
-        "The GRU is not played: it needs the opponent's earlier actions as a sequence, which the",
-        "live agent does not build (docs/decisions.md, DL3).",
+        "p: two-proportion z-test against the LightGBM agent. The GRU plays as",
+        "dl.sequence_agent.SequenceAgent, which rebuilds the opponent's history every turn.",
     ]
     return "\n".join(lines) + "\n"
 

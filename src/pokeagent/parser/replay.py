@@ -302,6 +302,19 @@ def _walk(
     return replay, observed, hidden, winner
 
 
+def choices_so_far(
+    battle_id: str, log: str
+) -> tuple[list[tuple[PublicState, Action]], list[PublicState]]:
+    """Every finished turn of a (possibly unfinished) game: labelled choices and hidden ones.
+
+    The same walk as training uses (parse_battle and hidden_choice_states), so a live agent
+    can rebuild exactly the sequences the GRU (dl/sequence.py) was trained on. The current
+    turn has no choices yet, so it appears in neither list.
+    """
+    _, observed, hidden, _ = _walk(battle_id, log, None, {})
+    return observed, hidden
+
+
 def hidden_choice_states(
     battle_id: str, log: str, ratings: Mapping[str, int | None] | None = None
 ) -> list[PublicState]:
