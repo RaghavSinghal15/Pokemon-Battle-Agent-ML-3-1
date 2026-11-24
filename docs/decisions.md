@@ -45,8 +45,9 @@ used only for our own options, never as a model input. The opponent's tera is no
 **Why:** tera is the main Gen 9 mechanic and humans use it almost every game. Against
 SimpleHeuristicsPlayer, best response wins 794 of 1,000 with tera against 745 without
 (+4.9 points, p ~ 0.01), with the same code otherwise. Minimax with stand-ins (F13) and tera
-wins 700 of 1,000, against 310 of 500 with stand-ins alone and 319 of 1,000 with neither. The cost 0.25 is a first guess, not yet
-tuned; learning tera timing from replays is a possible follow-up.
+wins 700 of 1,000, against 310 of 500 with stand-ins alone and 319 of 1,000 with neither. The cost 0.25 was a first guess; the tuning
+entry below (F17) tested 0.5 and 1.0 and kept it. Learning tera timing from replays is a possible
+follow-up.
 
 ## 2026-11-23: Score attacks into an unseen switch-in against stand-in species, for minimax only (F13, Raghav with Claude)
 **Decision:** when the opponent may switch to a Pokemon we have not seen, the switch column
@@ -769,8 +770,8 @@ most likely moves. For each of those cells it takes the HP both Pokemon are expe
 the end of the turn (over the branches where both survive), builds next turn's table from that
 position, and adds (its value - the value of next turn's table from the HP as now) to the cell.
 Cells where a knockout is more likely than not, switch rows and the switch column are not
-expanded. Off by default; the `two_turn` ablation turns it on, and it becomes the default only
-if it wins.
+expanded. Off by default; the `two_turn` ablation turns it on, and it was to become the
+default only if it won. It did not (see the tuning entry, F17), so it stays off.
 
 **Why.** The one-turn table cannot see that a trade leaves us slower or in KO range next turn.
 Adding a difference keeps expanded and unexpanded cells on the same scale (the same form as
@@ -798,3 +799,32 @@ presentation and the demo video. LightGBM computes exact SHAP values for trees i
 
 **Alternatives.** (1) A static HTML report per game: no turn slider, no switching the class
 being explained. (2) The `shap` library: same numbers for trees, one more heavy dependency.
+
+## F17 (#120, #70): tuning the tera cost and the two-turn search (2026-11-24)
+
+**Decision.** Keep the tera cost at 0.25 of one Pokemon's HP and keep the two-turn search (F12)
+off. These are the settings of the final agent.
+
+**How it was tested.** The full agent (best response) against SimpleHeuristicsPlayer, 1,000
+games per setting, the same code otherwise (commit 06db2ae, with F16 and F18). p is a
+two-proportion z-test against the 0.25 / no-search agent.
+
+| Setting | Wins / 1,000 | Win rate | p |
+|---|---|---|---|
+| tera cost 0.25, no search (kept) | 836 | 83.6% | - |
+| tera cost 0.5 | 842 | 84.2% | 0.72 |
+| tera cost 1.0 | 809 | 80.9% | 0.11 |
+| two-turn search on | 828 | 82.8% | 0.63 |
+
+**Why.** No setting is significantly better. 0.25 and 0.5 tie, so we keep the value that was
+already in use rather than pick the larger number by noise. 1.0 is lower (not significant): with
+a high cost the agent almost never terastallizes, and tera alone was worth about 5 points (F14).
+The two-turn search is no better and makes each decision about 60% slower (0.19 s to 0.31 s), so
+it stays an option (`PAYOFF_SEARCH`), not the default. Against this bot, one turn of look-ahead
+with lasting effects seems to capture what a second turn would add.
+
+**Alternatives.** (1) Pick 0.5 because it scored highest: a 0.6-point gap is well inside the
+noise (95% intervals are about +-2.3 points at 1,000 games). (2) Play more games to separate
+0.25 from 0.5: about 20,000 games per setting would be needed for a 1-point difference, for a
+change that would not alter the conclusions. (3) Tune against human players: the ladder is used
+for testing the final agent, not for tuning (no repeated play against the same opponents).
