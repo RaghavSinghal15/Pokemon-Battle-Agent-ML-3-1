@@ -782,3 +782,19 @@ decision, several times slower. (2) Replace the cell value by the two-turn value
 adding a difference: unexpanded cells would then be on a different scale. (3) Monte Carlo
 rollouts with the simulator: closest to the real game, but far slower, and no longer a table
 the explanation can show.
+
+## F13 (#81): the explanation dashboard, with contributions from LightGBM (2026-11-24)
+
+**Decision.** A Streamlit page (`python -m pokeagent.dashboard`) steps through a recorded game
+turn by turn: matchup and P(win), the forecast and the features that drove it, the beliefs, the
+payoff table and the choice. The agent writes one JSON line per turn (`trace_stream`,
+`agent/explain.py: turn_record`); `scripts/demo_explanations.py` records it with the replay.
+Feature contributions are LightGBM's own SHAP values (`pred_contrib=True`, exact TreeSHAP).
+`streamlit` is an optional extra imported only inside `dashboard/`, like `torch` in `dl/`.
+
+**Why.** The explanation log is text; a page makes the same reasoning easy to show in the
+presentation and the demo video. LightGBM computes exact SHAP values for trees itself, so the
+`shap` library adds nothing here.
+
+**Alternatives.** (1) A static HTML report per game: no turn slider, no switching the class
+being explained. (2) The `shap` library: same numbers for trees, one more heavy dependency.
