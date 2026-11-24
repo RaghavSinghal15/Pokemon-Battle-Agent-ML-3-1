@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "player_class": "SequenceAgent",
+  "opponent_class": "SimpleHeuristicsPlayer",
+  "format": "gen9randombattle",
+  "games": 250,
+  "wins": 206,
+  "losses": 44,
+  "ties": 0,
+  "win_rate": 0.824,
+  "ci_lower": 0.7719923442315464,
+  "ci_upper": 0.8662009227506975,
+  "interval_method": "wilson",
+  "z": 1.96,
+  "seed": 464,
+  "seed_scope": "Python/NumPy choices only; server teams are not seeded",
+  "source": {
+    "commit": "2b91cbff517fb1b07c863ec0a7c00149103f6e2d",
+    "tracked_changes": false
+  },
+  "server_source": null,
+  "started_utc": "2026-11-24T01:35:30.470027+00:00",
+  "elapsed_seconds": 663.0400005469996,
+  "python_version": "3.13.18",
+  "poke_env_version": "0.16.1",
+  "variant": "gru",
+  "opponent_model": "GRU over the game (full history)"
+}
