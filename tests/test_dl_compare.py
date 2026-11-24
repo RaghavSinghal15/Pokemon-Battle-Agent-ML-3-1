@@ -26,4 +26,4 @@ def test_game_results_add_up_chunks(tmp_path):
     assert result["mlp"]["games"] == 500 and result["mlp"]["wins"] == 410
     assert result[compare.REFERENCE]["wins"] == 410
     assert "naive_hidden" not in result
-    assert result["mlp_vs_reference_p"] == pytest.approx(1.0)
+    assert result["p_vs_reference"]["mlp"] == pytest.approx(1.0)

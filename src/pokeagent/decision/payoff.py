@@ -23,6 +23,7 @@ from pokeagent.decision._payoff_state import (
     entry_damage,
     first_probability,
     hazard_value,
+    hidden_boosts,
     lasting_effect,
     move_effect,
     residual,
@@ -329,6 +330,7 @@ def _table(
     elif unseen:
         reserves.append((None, unseen))
     belief = belief_for(opp.species, beliefs)
+    hidden = hidden_boosts(opp, belief)
     probs = _probabilities(moves, bool(reserves), class_probs, bool(belief and belief.move_probs))
     columns = [Action("move", m.id) for m, _ in moves]
     if reserves:
@@ -446,8 +448,10 @@ def _table(
             else 0,
         )
         ours = move_effect(scenario, our_key, their_key, our_move)
+        # #119: only the opponent's active Pokemon has a belief to weigh hidden boosts by.
+        boosts = hidden if their_key == opp_key else None
         theirs = (
-            move_effect(scenario, their_key, our_key, their_move)
+            move_effect(scenario, their_key, our_key, their_move, boosts)
             if their_key
             else move_effect(scenario, our_key, None, None)
         )
@@ -474,7 +478,7 @@ def _table(
             their_mon.current_hp_fraction if their_mon else 1,
             ours,
             theirs,
-            first_probability(scenario, our_move, their_move),
+            first_probability(scenario, our_move, their_move, boosts),
             losses,
             residuals=(residual(our_mon, scenario), residual(their_mon, scenario)),
             # A Substitute leaves with its owner, so only the Pokemon staying in keeps one.

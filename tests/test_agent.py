@@ -138,3 +138,39 @@ def test_a_tera_decision_becomes_a_tera_order(agent):
     battle._can_tera = False  # used already: a tera decision is no longer legal
     with pytest.raises(ValueError):
         agent._order(battle, Action("move", "seismictoss", tera=True))
+
+
+def test_stall_guard_switches_after_turns_without_progress(agent, monkeypatch):
+    """#121: every row ~0 and no HP change for PAYOFF_STALL_TURNS turns -> best switch."""
+    battle = make_battle(moves=("splash", "nastyplot"))
+    reserve = add_reserve(battle, "p1")
+    battle._available_switches = [reserve]
+    table = PayoffTable(
+        [Action("move", "splash"), Action("move", "nastyplot"), Action("switch", reserve.species)],
+        [Action("move", "curse")],
+        [[0.0002], [0.0001], [-0.0001]],
+        [1.0],
+    )
+    monkeypatch.setattr(player, "build_payoff_table", lambda *args, **kwargs: table)
+    chosen = [agent.choose_move(battle).order for _ in range(player.PAYOFF_STALL_TURNS + 1)]
+    assert all(order.id == "splash" for order in chosen[:-1])
+    assert chosen[-1] is reserve
+    assert "Stall guard" in agent.last_decision.explanation
+    # After the switch the count starts again, so the agent does not switch every turn.
+    assert agent.choose_move(battle).order.id == "splash"
+
+
+def test_stall_guard_ignores_flat_tables_while_hp_is_changing(agent, monkeypatch):
+    battle = make_battle(moves=("splash",))
+    reserve = add_reserve(battle, "p1")
+    battle._available_switches = [reserve]
+    table = PayoffTable(
+        [Action("move", "splash"), Action("switch", reserve.species)],
+        [Action("move", "curse")],
+        [[0.0], [0.0]],
+        [1.0],
+    )
+    monkeypatch.setattr(player, "build_payoff_table", lambda *args, **kwargs: table)
+    for _ in range(player.PAYOFF_STALL_TURNS + 2):
+        battle.opponent_active_pokemon._current_hp -= 1  # someone is taking damage
+        assert agent.choose_move(battle).order.id == "splash"

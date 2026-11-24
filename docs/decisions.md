@@ -712,19 +712,52 @@ volunteers (friends, the course): fewer games and a much narrower skill range.
 (3) Comparing win rates across the two accounts: the ladder pairs players of similar rating, so
 win rates drift towards 50%. We compare final ratings instead.
 
-## DL3: the MLP is played in the agent, the GRU is not (2026-11-24)
+## DL3: every opponent model plays in the agent, the GRU through a live history (2026-11-24)
 
 **Decision.** For the agent games of the deep-learning comparison, the full agent's LightGBM
-forecast is swapped for DL1's MLP and nothing else changes. DL2's GRU is compared on the test
-split only.
+forecast is swapped for another model and nothing else changes: logistic regression and DL1's
+MLP drop straight in (they read one turn's features). DL2's GRU needs the opponent's earlier
+turns, so `dl/sequence_agent.py` rebuilds them every turn from the battle log poke-env has
+received, with the parser walk (`parser.replay.choices_so_far`) and feature code that built the
+training sequences. The agent got one hook for this, `ExplainableAgent._forecast`.
 
-**Why.** The MLP takes one turn's features, exactly like LightGBM, so it drops in. The GRU
-needs the opponent's earlier actions as a sequence; the live agent would have to rebuild that
-history every turn, which is new code in the parser and agent for a model that is no better
-than LightGBM on validation. The ablations also show that against the heuristics bot the
-forecast barely changes the win rate (class frequencies do as well as LightGBM), so games
-cannot separate two good forecasts anyway; the test-split metrics are the real comparison.
+**Why.** Rebuilding the history with the training code, rather than tracking it separately in
+the agent, guarantees the GRU sees live inputs made the same way as its training inputs
+(labels follow models/labels.py; hidden and locked turns are treated as in training). Games
+are short (about 30 turns), so re-parsing the log each turn is cheap.
 
-**Alternatives.** (1) Build the live history and play the GRU: more code, and the games would
-show no difference for the reason above. (2) Play no deep model: the plan asked for games,
-and the MLP costs nothing extra to plug in.
+**Alternatives.** (1) Track the history incrementally in the agent: faster, but a second
+implementation of the label rule that could drift from training. (2) Test-split metrics only,
+no games: the plan asked for games, and showing that games against the bot barely separate
+forecasts is itself a result.
+
+## F16 (#119): unrevealed items and abilities count by their belief (2026-11-24)
+
+**Decision.** When the opponent's item or ability is not revealed yet, the payoff table weighs
+what it might be: P(Choice Scarf) mixes the speed order, P(Gale Wings) gives Flying moves +1
+priority at full HP, and Life Orb, Choice Band and Choice Specs scale their damage by the
+expected multiplier. Item probabilities come from 50,000 teams sampled from the local
+simulator (`beliefs/items.py`, `beliefs/sample_items.py`), conditioned on the revealed moves and
+ability, so the item belief is Bayes' rule by counting.
+
+**Why.** 4 of 17 analysed losses came from a boost we only learned about when it hit us.
+Items are not in sets.json (teams.ts picks them from the moveset), so sampling the real
+generator is the honest prior, and it needs no hand-written copy of teams.ts.
+
+**Alternatives.** (1) Re-implement teams.ts item rules: a lot of code that drifts when
+Showdown updates. (2) Usage statistics from pkmn.github.io/randbats: not reachable from every
+machine, and not conditioned on the moves we have seen. (3) Assume the worst item: too
+pessimistic, it would make the agent switch out of winning matchups. Opponent-model features do
+not read item beliefs, so the trained models are unaffected.
+
+## F18 (#121): a stall guard (2026-11-24)
+
+**Decision.** If PAYOFF_STALL_TURNS (3) turns in a row change nobody's HP and every row of the
+table scores within ±0.0005 of zero, the agent takes the best-scoring switch instead.
+
+**Why.** In a 103-turn loss our Spectrier, out of attacking PP, used Nasty Plot for 50 turns
+while Snorlax set up. A one-turn table sees no gain anywhere, so it never switches. Requiring no
+HP change keeps the guard out of won positions where the value model is simply saturated.
+
+**Alternatives.** Count turns with a flat table only (would fire in already-won games), or a
+deeper search (#70), which is much more expensive per decision.

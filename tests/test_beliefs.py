@@ -174,3 +174,32 @@ def test_transformed_ditto_never_gets_negative_move_probabilities():
     result = tracker.update_belief(prior, seen)
     assert all(0 <= p <= 1 for p in result.move_probs.values())
     assert set(result.move_probs) == {"sludgebomb", "shadowball", "shoreup"}
+
+
+def test_item_beliefs_condition_on_revealed_moves(tmp_path):
+    """#119: Bayes by counting over sampled sets that agree with the evidence."""
+    import json
+
+    from pokeagent.beliefs.items import _load, item_probs
+
+    counts = {
+        "talonflame|bravebird,roost,swordsdance,willowisp|galewings|heavydutyboots": 6,
+        "talonflame|bravebird,flareblitz,uturn,willowisp|flamebody|choiceband": 3,
+        "talonflame|bravebird,flareblitz,uturn,willowisp|flamebody|choicescarf": 1,
+    }
+    path = tmp_path / "items.json"
+    path.write_text(json.dumps(counts), encoding="utf-8")
+    _load.cache_clear()
+    assert item_probs("Talonflame", path=path) == {
+        "heavydutyboots": 0.6,
+        "choiceband": 0.3,
+        "choicescarf": 0.1,
+    }
+    assert item_probs("talonflame", ["U-turn"], path=path) == {
+        "choiceband": 0.75,
+        "choicescarf": 0.25,
+    }
+    # Evidence nothing sampled agrees with: the ability is dropped first, then the moves.
+    assert item_probs("talonflame", ["uturn"], "galewings", path=path)["choiceband"] == 0.75
+    assert item_probs("missingno", path=path) == {}
+    _load.cache_clear()

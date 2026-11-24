@@ -59,8 +59,10 @@ def _load(path: Path):
         return pickle.load(stream)
 
 
-def build_agent(variant: str, **player_kwargs) -> ExplainableAgent:
-    """The full agent with this variant's component switched off."""
+def build_agent(variant: str, agent_class=None, **player_kwargs) -> ExplainableAgent:
+    """The full agent with this variant's component switched off.
+
+    agent_class replaces ExplainableAgent (dl.sequence_agent's GRU agent uses this)."""
     settings = VARIANTS[variant][1]
     model_path = NAIVE_MODEL_PATH if settings.get("model") == "naive" else OPPONENT_MODEL_PATH
     options = {
@@ -71,7 +73,8 @@ def build_agent(variant: str, **player_kwargs) -> ExplainableAgent:
     }
     if settings.get("utility", "value") == "value":
         options.update(utility="value", value_model=_load(VALUE_UTILITY_MODEL_PATH))
-    agent_class = DamageOnlyAgent if settings.get("damage_only") else ExplainableAgent
+    if agent_class is None:
+        agent_class = DamageOnlyAgent if settings.get("damage_only") else ExplainableAgent
     return agent_class(**options, **player_kwargs)
 
 

@@ -59,6 +59,13 @@ RANDOM_BATTLE_SETS_PATH = (
     REPO_ROOT.parent / "pokemon-showdown" / "data" / "random-battles" / "gen9" / "sets.json"
 )
 
+# Where Random Battle items come from: items are not in sets.json (teams.ts picks them from
+# the moveset), so beliefs.sample_items samples this many teams from the local simulator and
+# saves (species, moves, ability, item) counts here. Item beliefs (#119) read that file.
+RANDOM_BATTLE_SHOWDOWN_DIR = REPO_ROOT.parent / "pokemon-showdown"
+RANDOM_BATTLE_ITEMS_PATH = INTERIM_DIR / "random_battle_items.json"
+RANDOM_BATTLE_ITEM_TEAMS = 50_000
+
 # Hugging Face dataset with recorded human games.
 HF_REPLAY_DATASET = "HolidayOugi/pokemon-showdown-replays"
 # The exact dataset version (a commit of the dataset repo) we download. Pinning it means the
@@ -114,6 +121,17 @@ PAYOFF_ATTACK_TEMPERATURE = 0.1
 # using it later, which the one-turn look ahead cannot see. Tera rows pay this cost, in
 # fractions of one Pokemon's HP (converted to P(win) like hazards). Tuned in games (F14).
 PAYOFF_TERA_COST = 0.25
+# #119: unrevealed items and abilities that change the turn, weighted by their belief.
+# Damage multipliers of the opponent's possible items (others count as 1).
+PAYOFF_HIDDEN_ITEM_DAMAGE = {
+    "lifeorb": {"physical": 1.3, "special": 1.3},
+    "choiceband": {"physical": 1.5, "special": 1.0},
+    "choicespecs": {"physical": 1.0, "special": 1.5},
+}
+# #121: if this many turns in a row change nobody's HP and every row scores within
+# PAYOFF_STALL_EPSILON of zero, the one-turn table cannot see a way forward: switch instead.
+PAYOFF_STALL_TURNS = 3
+PAYOFF_STALL_EPSILON = 5e-4
 RANDOM_BATTLE_TEAM_SIZE = 6
 
 # Local Showdown server started with `node pokemon-showdown start --no-security`.

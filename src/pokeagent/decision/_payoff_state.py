@@ -24,6 +24,7 @@ from poke_env.data import GenData, to_id_str
 
 from pokeagent.config import (
     PAYOFF_FREEZE_ACT_CHANCE,
+    PAYOFF_HIDDEN_ITEM_DAMAGE,
     PAYOFF_SLEEP_ACT_CHANCE,
     RANDOM_BATTLE_SETS_PATH,
 )
@@ -117,22 +118,60 @@ def effective_speed(mon: Pokemon, conditions: dict, battle: Battle) -> float:
     return speed
 
 
-def first_probability(battle: Battle, ours: Move | None, theirs: Move | None) -> float:
-    """Priority before Speed; ties branch equally. Switches have already occurred."""
-    if ours is None or theirs is None:
-        return 0.5
+@dataclass(frozen=True)
+class HiddenBoosts:
+    """#119: what the opponent's unrevealed item and ability might add, from their beliefs.
+
+    scarf: P(Choice Scarf), 1.5x Speed. gale_wings: P(Gale Wings), +1 priority for Flying
+    moves at full HP. damage: expected damage multiplier of the hidden item per category.
+    """
+
+    scarf: float = 0.0
+    gale_wings: float = 0.0
+    damage: tuple[float, float] = (1.0, 1.0)  # (physical, special)
+
+
+def hidden_boosts(mon: Pokemon | None, belief) -> HiddenBoosts:
+    """Weights for the opponent's active Pokemon; nothing for what is already revealed."""
+    if mon is None or belief is None:
+        return HiddenBoosts()
+    scarf, damage = 0.0, (1.0, 1.0)
+    if mon.item in ("unknown_item", "unknownitem"):  # not revealed, not removed
+        items = belief.item_probs or {}
+        scarf = items.get("choicescarf", 0.0)
+        physical = special = 0.0
+        for item, p in items.items():
+            multipliers = PAYOFF_HIDDEN_ITEM_DAMAGE.get(item, {})
+            physical += p * multipliers.get("physical", 1.0)
+            special += p * multipliers.get("special", 1.0)
+        unknown = 1.0 - sum(items.values())  # probability mass with no estimate: no boost
+        damage = (physical + unknown, special + unknown) if items else (1.0, 1.0)
+    gale_wings = 0.0
+    if not mon.ability:  # not revealed yet
+        gale_wings = (belief.ability_probs or {}).get("galewings", 0.0)
+    return HiddenBoosts(scarf, gale_wings, damage)
+
+
+def _gale_wings(mon: Pokemon, move: Move) -> bool:
+    """Gale Wings gives Flying moves +1 priority while the user is at full HP."""
+    return move.type == PokemonType.FLYING and mon.current_hp_fraction >= 1
+
+
+def _first(battle: Battle, ours: Move, theirs: Move, opp_scarf: bool, opp_gale: bool) -> float:
     me, opp = battle.active_pokemon, battle.opponent_active_pokemon
 
-    def priority(mon, move):
+    def priority(mon, move, gale_wings):
         value = 0 if move.id == "recharge" else move.priority
-        return value + int(mon.ability == "prankster" and move.category == MoveCategory.STATUS)
+        value += int(mon.ability == "prankster" and move.category == MoveCategory.STATUS)
+        known_gale = mon.ability == "galewings"
+        return value + int((known_gale or gale_wings) and _gale_wings(mon, move))
 
-    priorities = (priority(me, ours), priority(opp, theirs))
+    priorities = (priority(me, ours, False), priority(opp, theirs, opp_gale))
     if priorities[0] != priorities[1]:
         return float(priorities[0] > priorities[1])
     speeds = (
         effective_speed(me, battle.side_conditions, battle),
-        effective_speed(opp, battle.opponent_side_conditions, battle),
+        effective_speed(opp, battle.opponent_side_conditions, battle) * (1.5 if opp_scarf else 1),
     )
     if speeds[0] == speeds[1]:
         return 0.5
@@ -140,10 +179,37 @@ def first_probability(battle: Battle, ours: Move | None, theirs: Move | None) ->
     return float(not faster if Field.TRICK_ROOM in battle.fields else faster)
 
 
+def first_probability(
+    battle: Battle, ours: Move | None, theirs: Move | None, hidden: HiddenBoosts | None = None
+) -> float:
+    """Priority before Speed; ties branch equally. Switches have already occurred.
+
+    With `hidden`, the order is averaged over the opponent having or not having a Choice
+    Scarf and Gale Wings, weighted by their beliefs (#119).
+    """
+    if ours is None or theirs is None:
+        return 0.5
+    hidden = hidden or HiddenBoosts()
+    total = 0.0
+    for scarf, p_scarf in ((True, hidden.scarf), (False, 1 - hidden.scarf)):
+        for gale, p_gale in ((True, hidden.gale_wings), (False, 1 - hidden.gale_wings)):
+            weight = p_scarf * p_gale
+            if weight > 0:
+                total += weight * _first(battle, ours, theirs, scarf, gale)
+    return total
+
+
 def move_effect(
-    battle: Battle, attacker_key: str, target_key: str | None, move: Move | None
+    battle: Battle,
+    attacker_key: str,
+    target_key: str | None,
+    move: Move | None,
+    hidden: HiddenBoosts | None = None,
 ) -> TurnEffect:
-    """Immediate damage/recovery/protection estimate; unsupported calculations stay explicit."""
+    """Immediate damage/recovery/protection estimate; unsupported calculations stay explicit.
+
+    `hidden` scales the damage by the attacker's expected hidden-item multiplier (#119).
+    """
     if move is None or move.id == "recharge":
         return TurnEffect()
     attacker = battle.get_pokemon(attacker_key)
@@ -182,6 +248,9 @@ def move_effect(
         raise PayoffUnavailable(f"Damage calculation failed for {move.id}: {error}") from error
     if not all(math.isfinite(x) for x in (low, high)) or not 0 <= low <= high:
         raise PayoffUnavailable(f"Invalid damage range for {move.id}")
+    if hidden is not None:
+        scale = hidden.damage[0 if move.category == MoveCategory.PHYSICAL else 1]
+        low, high = low * scale, high * scale
     if move.entry.get("accuracy") is True:
         accuracy = 1.0
     else:
