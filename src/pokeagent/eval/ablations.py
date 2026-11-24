@@ -48,6 +48,8 @@ VARIANTS = {
         {"hidden_boosts": False},
     ),
     "no_stall_guard": ("F18: no switch out of a stall", {"stall_guard": False}),
+    # Not an ablation but an addition: F12, one more turn of lookahead (off by default).
+    "two_turn": ("nothing; adds F12 two-turn search", {"search": True}),
     # Tuning (#120), not ablations: the tera cost the reference uses is PAYOFF_TERA_COST.
     "tera_cost_0.5": ("F17 tuning: tera cost 0.5 of a Pokemon's HP", {"tera_cost": 0.5}),
     "tera_cost_1.0": ("F17 tuning: tera cost 1.0 of a Pokemon's HP", {"tera_cost": 1.0}),
@@ -79,6 +81,7 @@ def build_agent(variant: str, agent_class=None, **player_kwargs) -> ExplainableA
         "opponent_model": _load(model_path),
         "strategy": settings.get("strategy", "best_response"),
         "belief_updates": settings.get("beliefs", True),
+        "search": settings.get("search", False),
     }
     if settings.get("utility", "value") == "value":
         options.update(utility="value", value_model=_load(VALUE_UTILITY_MODEL_PATH))

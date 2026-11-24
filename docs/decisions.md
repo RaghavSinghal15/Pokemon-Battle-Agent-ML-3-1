@@ -761,3 +761,24 @@ HP change keeps the guard out of won positions where the value model is simply s
 
 **Alternatives.** Count turns with a flat table only (would fire in already-won games), or a
 deeper search (#70), which is much more expensive per decision.
+
+## F12 (#70): two-turn search as a correction on the one-turn table (2026-11-24)
+
+**Decision.** With search on, the agent expands our 3 best move rows against the opponent's 2
+most likely moves. For each of those cells it takes the HP both Pokemon are expected to have at
+the end of the turn (over the branches where both survive), builds next turn's table from that
+position, and adds (its value - the value of next turn's table from the HP as now) to the cell.
+Cells where a knockout is more likely than not, switch rows and the switch column are not
+expanded. Off by default; the `two_turn` ablation turns it on, and it becomes the default only
+if it wins.
+
+**Why.** The one-turn table cannot see that a trade leaves us slower or in KO range next turn.
+Adding a difference keeps expanded and unexpanded cells on the same scale (the same form as
+lasting effects, F8). Expanding only the likeliest cells bounds the cost: on 4 local games the
+mean decision time went from 0.19 s to 0.31 s.
+
+**Alternatives.** (1) Full two-ply expectimax over every cell: tens of next-turn tables per
+decision, several times slower. (2) Replace the cell value by the two-turn value instead of
+adding a difference: unexpanded cells would then be on a different scale. (3) Monte Carlo
+rollouts with the simulator: closest to the real game, but far slower, and no longer a table
+the explanation can show.

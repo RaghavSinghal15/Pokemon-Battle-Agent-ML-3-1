@@ -1,5 +1,6 @@
 """Play Gen 9 singles using one-turn payoffs and explicit legal fallbacks."""
 
+import time
 import warnings
 from collections import Counter
 from typing import TYPE_CHECKING, Literal, TextIO
@@ -11,6 +12,7 @@ from poke_env.player import BattleOrder, Player
 from pokeagent.agent.explain import format_turn
 from pokeagent.beliefs.tracker import beliefs_for, prior_belief
 from pokeagent.config import (
+    PAYOFF_SEARCH,
     PAYOFF_STALL_EPSILON,
     PAYOFF_STALL_TURNS,
     PAYOFF_STAND_INS_FOR,
@@ -64,6 +66,7 @@ class ExplainableAgent(Player):
         value_model=None,
         belief_updates: bool = True,
         exact_move_model=None,
+        search: bool = PAYOFF_SEARCH,
         **kwargs,
     ):
         if strategy not in ("best_response", "lp"):
@@ -85,6 +88,9 @@ class ExplainableAgent(Player):
         self.belief_updates = belief_updates
         # E8: split each action class's probability among moves by the exact-move model (E6).
         self.exact_move_model = exact_move_model
+        # F12: two-turn search in the payoff table; decision_seconds records the cost.
+        self.search = search
+        self.decision_seconds: list[float] = []
         self.explanation_stream = explanation_stream
         self.last_explanation = ""
         self.decision_counts = Counter()
@@ -240,6 +246,13 @@ class ExplainableAgent(Player):
 
     def choose_move(self, battle: AbstractBattle) -> BattleOrder:
         """Choose from the table, or record why a legal fallback was needed."""
+        start = time.perf_counter()
+        try:
+            return self._choose_move(battle)
+        finally:
+            self.decision_seconds.append(time.perf_counter() - start)
+
+    def _choose_move(self, battle: AbstractBattle) -> BattleOrder:
         if not isinstance(battle, Battle) or battle.gen != 9:
             raise ValueError("ExplainableAgent supports Gen 9 singles only")
         if battle.force_switch:
@@ -274,6 +287,8 @@ class ExplainableAgent(Player):
                     extra["unseen_samples"] = PAYOFF_UNSEEN_SAMPLES
                 if self.exact_move_model is not None and state is not None:
                     extra["move_weights"] = self.exact_move_model.move_weights(state)
+                if self.search:
+                    extra["search"] = True
                 table = build_payoff_table(battle, beliefs, forecast, **extra)
             decision = (
                 best_response(table)
