@@ -11,6 +11,8 @@ from poke_env.player import BattleOrder, Player
 from pokeagent.agent.explain import format_turn
 from pokeagent.beliefs.tracker import beliefs_for, prior_belief
 from pokeagent.config import (
+    PAYOFF_STALL_EPSILON,
+    PAYOFF_STALL_TURNS,
     PAYOFF_STAND_INS_FOR,
     PAYOFF_UNSEEN_SAMPLES,
     RANDOM_BATTLE_SETS_PATH,
@@ -88,6 +90,8 @@ class ExplainableAgent(Player):
         self.decision_counts = Counter()
         self.fallback_reasons = Counter()
         self.last_decision: Decision | None = None
+        # #121: battle tag -> (HP snapshot last turn, turns in a row with no progress).
+        self._stall: dict[str, tuple[tuple, int]] = {}
         super().__init__(*args, **kwargs)
 
     def _order(self, battle: Battle, action: Action) -> BattleOrder:
@@ -197,6 +201,43 @@ class ExplainableAgent(Player):
         """
         return self.opponent_model.predict_proba(build_features(state, beliefs))
 
+    def _stall_guard(self, battle: Battle, table: PayoffTable, decision: Decision) -> Decision:
+        """#121: break a stall the one-turn table cannot see out of.
+
+        A stall: several turns in a row where nobody's HP changed and every row of the table
+        scores (about) zero, e.g. boosting forever with no attack left that can hurt them.
+        The table looks one turn ahead, so it cannot see that switching pays off later. After
+        PAYOFF_STALL_TURNS such turns, take the best-scoring switch instead.
+        """
+        snapshot = tuple(
+            round(mon.current_hp_fraction, 3)
+            for team in (battle.team, battle.opponent_team)
+            for mon in team.values()
+        )
+        probs = np.asarray(table.opp_probs or [], dtype=float)
+        values = np.asarray(table.values, dtype=float)
+        expected = values @ probs if len(probs) == values.shape[1] else values.max(axis=1)
+        flat = bool(np.all(np.abs(expected) < PAYOFF_STALL_EPSILON))
+        previous, turns = self._stall.get(battle.battle_tag, (None, 0))
+        turns = turns + 1 if flat and snapshot == previous else 0
+        self._stall[battle.battle_tag] = (snapshot, turns)
+        switches = [i for i, a in enumerate(table.our_actions) if a.kind == "switch"]
+        if turns < PAYOFF_STALL_TURNS or decision.chosen.kind == "switch" or not switches:
+            return decision
+        best = max(switches, key=lambda i: expected[i])  # ties: first, so it is repeatable
+        chosen = table.our_actions[best]
+        self._stall[battle.battle_tag] = (snapshot, 0)
+        return Decision(
+            chosen,
+            decision.strategy,
+            mixed_strategy={action_label(a): float(a == chosen) for a in table.our_actions},
+            explanation=(
+                f"{decision.explanation} Stall guard: {turns} turns with no HP change and every"
+                f" option scoring about zero, so switching to {action_label(chosen)} to change"
+                " the matchup."
+            ),
+        )
+
     def choose_move(self, battle: AbstractBattle) -> BattleOrder:
         """Choose from the table, or record why a legal fallback was needed."""
         if not isinstance(battle, Battle) or battle.gen != 9:
@@ -239,6 +280,7 @@ class ExplainableAgent(Player):
                 if self.strategy == "best_response"
                 else minimax_lp(table, rng=self.rng)
             )
+            decision = self._stall_guard(battle, table, decision)
             context = None
             if self.mode == "model":
                 now = scorer.win_probability() if scorer is not None else None

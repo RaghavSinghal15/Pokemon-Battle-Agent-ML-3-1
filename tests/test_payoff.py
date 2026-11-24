@@ -8,7 +8,14 @@ from poke_env.battle import Field, Move, Pokemon, SideCondition, Status
 from test_damage import make_battle
 
 from pokeagent.decision import _payoff_state, payoff
-from pokeagent.decision._payoff_state import entry_damage, first_probability, scenario_copy
+from pokeagent.decision._payoff_state import (
+    HiddenBoosts,
+    entry_damage,
+    first_probability,
+    hidden_boosts,
+    move_effect,
+    scenario_copy,
+)
 from pokeagent.decision._turn import TurnEffect, turn_value
 from pokeagent.decision.payoff import (
     SWITCH_COLUMN,
@@ -218,6 +225,48 @@ def test_priority_trick_room_and_modifiers():
     scenario.opponent_active_pokemon.item = "choicescarf"
     scenario.opponent_side_conditions[SideCondition.TAILWIND] = 1
     assert first_probability(scenario, ours, ours) == 0
+
+
+def test_hidden_scarf_and_gale_wings_mix_the_order():
+    """#119: an unrevealed Scarf or Gale Wings counts with its belief probability."""
+    battle, _ = table_battle()
+    ours, theirs = Move("seismictoss", gen=9), Move("bravebird", gen=9)
+    scenario = scenario_copy(battle, "p1: Attacker", "p2: Defender")
+    scenario.active_pokemon.stats["spe"] = 120
+    scenario.opponent_active_pokemon.stats["spe"] = 100  # faster only with a Scarf (150)
+    assert first_probability(scenario, ours, ours) == 1
+    assert first_probability(scenario, ours, ours, HiddenBoosts(scarf=0.4)) == pytest.approx(0.6)
+    # Gale Wings: Brave Bird gets +1 priority at full HP, whatever the Speed.
+    assert first_probability(scenario, ours, theirs, HiddenBoosts(gale_wings=0.25)) == 0.75
+    scenario.opponent_active_pokemon._current_hp = scenario.opponent_active_pokemon.max_hp // 2
+    assert first_probability(scenario, ours, theirs, HiddenBoosts(gale_wings=0.25)) == 1
+
+
+def test_hidden_boosts_read_only_unrevealed_details():
+    battle, _ = table_battle()
+    opp = battle.opponent_active_pokemon
+    belief = SetBelief(
+        "blissey",
+        item_probs={"choicescarf": 0.5, "lifeorb": 0.5},
+        ability_probs={"galewings": 0.25},
+    )
+    opp.item, opp._ability = "unknown_item", None
+    boosts = hidden_boosts(opp, belief)
+    assert boosts.scarf == 0.5 and boosts.gale_wings == 0.25
+    assert boosts.damage == pytest.approx((1.15, 1.15))  # half Life Orb (1.3), half nothing
+    opp.item, opp._ability = "leftovers", "naturalcure"  # revealed: nothing is guessed
+    assert hidden_boosts(opp, belief) == HiddenBoosts()
+
+
+def test_hidden_item_scales_the_opponents_damage():
+    battle, _ = table_battle(("bodyslam",))
+    scenario = scenario_copy(battle, "p1: Attacker", "p2: Defender")
+    move = Move("bodyslam", gen=9)
+    plain = move_effect(scenario, "p2: Defender", "p1: Attacker", move)
+    boosted = move_effect(
+        scenario, "p2: Defender", "p1: Attacker", move, HiddenBoosts(damage=(1.5, 1.0))
+    )
+    assert boosted.damage[1] == pytest.approx(plain.damage[1] * 1.5)
 
 
 def test_hazard_protection():

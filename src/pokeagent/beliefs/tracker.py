@@ -9,6 +9,7 @@ from pathlib import Path
 
 from poke_env.data import GenData, to_id_str
 
+from pokeagent.beliefs.items import item_probs
 from pokeagent.config import (
     RANDOM_BATTLE_GENERATION,
     RANDOM_BATTLE_MOVE_SLOTS,
@@ -178,6 +179,9 @@ def update_belief(belief: SetBelief, seen: PokemonView) -> SetBelief:
         result.role_probs = belief.role_probs.copy()
     if item and item != "unknownitem" and not seen.item_removed:
         result.item_probs = {item: 1.0}
+    elif not item and not seen.item_removed:
+        # Not shown yet: estimate it from sampled Random Battle teams (beliefs/items.py).
+        result.item_probs = item_probs(species, moves, ability)
     return result
 
 
