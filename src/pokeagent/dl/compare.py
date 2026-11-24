@@ -28,7 +28,6 @@ import pandas as pd
 
 from pokeagent.config import ARTIFACTS_DIR, REPORTS_DIR
 from pokeagent.dl.play_games import GAMES_DIR
-from pokeagent.eval.ablations import ABLATION_RESULTS_DIR
 from pokeagent.eval.stats import win_rate_ci
 from pokeagent.interfaces import ACTION_CLASSES
 from pokeagent.models.calibration import expected_calibration_error, reliability_table
@@ -47,6 +46,8 @@ from pokeagent.models.opponent import (
 
 REPORT_JSON = REPORTS_DIR / "results" / "dl_comparison.json"
 REPORT_MD = REPORTS_DIR / "results" / "dl_comparison.md"
+# The DL games swap the forecast of the agent at ea612c6, so they compare with its results.
+REFERENCE_AGENT_DIR = REPORTS_DIR / "results" / "archive" / "agent-ea612c6" / "ablations"
 REFERENCE = "lightgbm_hidden"  # the model the agent uses
 DEEP = {"mlp": "opponent_model_mlp", "gru": "opponent_model_gru"}
 # How a viva examiner could get a reason out of each model for one prediction.
@@ -140,7 +141,7 @@ def _totals(paths) -> tuple[int, int]:
     return games, wins
 
 
-def game_results(games_dir=GAMES_DIR, ablation_dir=ABLATION_RESULTS_DIR) -> dict:
+def game_results(games_dir=GAMES_DIR, ablation_dir=REFERENCE_AGENT_DIR) -> dict:
     rows = {
         "mlp": _totals(sorted(games_dir.glob("mlp-*.json"))),
         "gru": _totals(sorted(games_dir.glob("gru-*.json"))),
