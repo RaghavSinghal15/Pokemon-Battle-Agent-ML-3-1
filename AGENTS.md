@@ -79,9 +79,12 @@ pokemon-showdown folder, listening on `localhost:8000`. Node.js 22.18+ is requir
   redistribute the replay dataset.
 - **Version 1 scope.** No `torch`, `shap` or `streamlit` imports in version 1 code, and no new
   heavy dependencies without the team agreeing. See [docs/05-plan.md](docs/05-plan.md).
-  The one exception: `torch` may be imported inside `src/pokeagent/dl/` only (the
+  Two exceptions: `torch` may be imported inside `src/pokeagent/dl/` only (the
   deep-learning comparison, installed with `pip install -e ".[dl]"`). Nothing outside `dl/`
-  imports from it, so the fast install and CI never need torch.
+  imports from it, so the fast install and CI never need torch. Likewise `streamlit` may be
+  imported inside `src/pokeagent/dashboard/` only (the explanation dashboard, installed with
+  `pip install -e ".[dashboard]"`); its feature contributions come from LightGBM itself, so
+  `shap` is not needed.
 - **Constants in config.** No hard-coded paths, format names or seeds; use `config.py`.
 - **Tests with every change.** Use small hand-built fake inputs (see `make_state()` in
   `tests/test_interfaces.py`) so tests don't depend on unfinished modules.

@@ -32,6 +32,10 @@ dev = [
 dl = [
     "torch",
 ]
+# The explanation dashboard (F13). Imported only inside src/pokeagent/dashboard/.
+dashboard = [
+    "streamlit",
+]
 # Version 2 only. Do not import these from version 1 code.
 v2 = [
     "shap",

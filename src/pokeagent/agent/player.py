@@ -1,5 +1,6 @@
 """Play Gen 9 singles using one-turn payoffs and explicit legal fallbacks."""
 
+import json
 import time
 import warnings
 from collections import Counter
@@ -9,7 +10,7 @@ import numpy as np
 from poke_env.battle import AbstractBattle, Battle
 from poke_env.player import BattleOrder, Player
 
-from pokeagent.agent.explain import format_turn
+from pokeagent.agent.explain import format_turn, turn_record
 from pokeagent.beliefs.tracker import beliefs_for, prior_belief
 from pokeagent.config import (
     PAYOFF_SEARCH,
@@ -67,6 +68,7 @@ class ExplainableAgent(Player):
         belief_updates: bool = True,
         exact_move_model=None,
         search: bool = PAYOFF_SEARCH,
+        trace_stream: TextIO | None = None,
         **kwargs,
     ):
         if strategy not in ("best_response", "lp"):
@@ -92,6 +94,8 @@ class ExplainableAgent(Player):
         self.search = search
         self.decision_seconds: list[float] = []
         self.explanation_stream = explanation_stream
+        # F13 dashboard: one JSON line per explained turn (agent/explain.py: turn_record).
+        self.trace_stream = trace_stream
         self.last_explanation = ""
         self.decision_counts = Counter()
         self.fallback_reasons = Counter()
@@ -152,6 +156,11 @@ class ExplainableAgent(Player):
         self.decision_counts[decision.strategy] += 1
         if context is not None:
             text = format_turn(*context)
+            if self.trace_stream is not None:
+                state, beliefs = context[0], context[1]
+                record = turn_record(*context, features=build_features(state, beliefs))
+                self.trace_stream.write(json.dumps(record) + "\n")
+                self.trace_stream.flush()
         else:
             text = (
                 f"Battle {battle.battle_tag} | Turn {battle.turn}: "

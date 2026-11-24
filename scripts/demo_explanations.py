@@ -46,12 +46,17 @@ async def main(games: int, out: Path, quiet: bool = False) -> None:
     out.mkdir(parents=True, exist_ok=True)
     suffix = token_hex(3)  # unique Showdown names for runs started together
     log_path = out / f"demo-{stamp}-{suffix}.log"
-    with log_path.open("w", encoding="utf-8") as log:
+    trace_path = out / f"demo-{stamp}-{suffix}.jsonl"  # for the dashboard (F13)
+    with (
+        log_path.open("w", encoding="utf-8") as log,
+        trace_path.open("w", encoding="utf-8") as trace,
+    ):
         agent = build_agent(
             "full",
             account_configuration=AccountConfiguration(f"demo{suffix}", None),
             battle_format=BATTLE_FORMAT,
             explanation_stream=log if quiet else _Tee(sys.stdout, log),
+            trace_stream=trace,
             save_replays=str(out),
         )
         opponent = BASELINES["heuristics"](
@@ -60,7 +65,8 @@ async def main(games: int, out: Path, quiet: bool = False) -> None:
         )
         await agent.battle_against(opponent, n_battles=games)
     print(
-        f"\nWon {agent.n_won_battles}/{games}. Explanations: {log_path}; replay in {EXAMPLES_DIR}"
+        f"\nWon {agent.n_won_battles}/{games}. Explanations: {log_path}; dashboard data:"
+        f" {trace_path}; replay in {out}"
     )
 
 

@@ -81,3 +81,52 @@ def format_turn(
             f" {win_probability:.0%}): +0.050 means 5 points more likely to win."
         )
     return "\n".join(lines)
+
+
+def _top(probs: dict[str, float], count: int) -> dict[str, float]:
+    ranked = sorted(probs.items(), key=lambda pair: (-pair[1], pair[0]))[:count]
+    return {name: round(float(p), 4) for name, p in ranked}
+
+
+def turn_record(
+    state: PublicState,
+    beliefs: BeliefState,
+    class_probs: dict[str, float],
+    table: PayoffTable,
+    decision: Decision,
+    win_probability: float | None = None,
+    features: dict[str, float] | None = None,
+) -> dict:
+    """The same turn as format_turn, as plain data for the dashboard (one JSON line per turn).
+
+    Holds only what format_turn shows plus the forecast's input features, so the dashboard can
+    show which features pushed the forecast. Everything here is public except our own choice.
+    """
+    me, opp = state.me.active, state.opp.active
+    belief = beliefs.get(opp.species) if opp else None
+    return {
+        "battle": state.battle_id,
+        "turn": state.turn,
+        "me": {"species": me.species, "hp": me.hp_fraction} if me else None,
+        "opp": {"species": opp.species, "hp": opp.hp_fraction} if opp else None,
+        "beliefs": {
+            "roles": _top(belief.role_probs, 5),
+            "moves": _top(belief.move_probs, 8),
+            "items": _top(belief.item_probs, 4),
+        }
+        if belief
+        else None,
+        "forecast": {c: float(class_probs[c]) for c in ACTION_CLASSES},
+        "features": features,
+        "table": {
+            "rows": [action_label(a) for a in table.our_actions],
+            "columns": [action_label(a) for a in table.opp_actions],
+            "values": [[float(v) for v in row] for row in table.values],
+            "column_probs": None if table.opp_probs is None else list(map(float, table.opp_probs)),
+        },
+        "strategy": decision.strategy,
+        "chosen": action_label(decision.chosen),
+        "mixture": {k: float(v) for k, v in decision.mixed_strategy.items() if v > 0},
+        "explanation": decision.explanation,
+        "win_probability": win_probability,
+    }
