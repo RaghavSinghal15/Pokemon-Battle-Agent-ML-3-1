@@ -79,3 +79,14 @@ def test_switched_off_restores_every_setting():
         payoff.PAYOFF_EFFECT_TURNS,
     )
     assert before == after
+
+
+def test_new_switches_restore_every_setting():
+    before = (payoff.hidden_boosts, player.PAYOFF_STALL_TURNS, payoff.PAYOFF_TERA_COST)
+    with ablations.switched_off("no_hidden_boosts"):
+        assert payoff.hidden_boosts(object(), object()) == ablations.HiddenBoosts()
+    with ablations.switched_off("no_stall_guard"):
+        assert player.PAYOFF_STALL_TURNS > 10**6
+    with ablations.switched_off("tera_cost_1.0"):
+        assert payoff.PAYOFF_TERA_COST == 1.0
+    assert (payoff.hidden_boosts, player.PAYOFF_STALL_TURNS, payoff.PAYOFF_TERA_COST) == before

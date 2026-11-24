@@ -18,6 +18,7 @@ from pokeagent.config import (
     VALUE_UTILITY_MODEL_PATH,
 )
 from pokeagent.decision import payoff
+from pokeagent.decision._payoff_state import HiddenBoosts
 from pokeagent.eval.stats import win_rate_ci
 
 ABLATION_RESULTS_DIR = REPORTS_DIR / "results" / "ablations"
@@ -42,6 +43,14 @@ VARIANTS = {
         "F13: minimax, with no damage credit against unseen switch-ins",
         {"strategy": "lp", "stand_ins": False},
     ),
+    "no_hidden_boosts": (
+        "F16: unrevealed Scarf, Gale Wings and damage items ignored",
+        {"hidden_boosts": False},
+    ),
+    "no_stall_guard": ("F18: no switch out of a stall", {"stall_guard": False}),
+    # Tuning (#120), not ablations: the tera cost the reference uses is PAYOFF_TERA_COST.
+    "tera_cost_0.5": ("F17 tuning: tera cost 0.5 of a Pokemon's HP", {"tera_cost": 0.5}),
+    "tera_cost_1.0": ("F17 tuning: tera cost 1.0 of a Pokemon's HP", {"tera_cost": 1.0}),
 }
 
 
@@ -93,10 +102,24 @@ def lasting_effects(enabled: bool):
 @contextmanager
 def switched_off(variant: str):
     """Temporarily switch off the parts of this variant that are module settings, not agent
-    options: lasting effects (F8-F10), our tera (F14), attack weighting (F15) and minimax's
-    stand-ins for unseen switch-ins (F13). Everything is restored afterwards."""
+    options: lasting effects (F8-F10), our tera (F14), attack weighting (F15), minimax's
+    stand-ins for unseen switch-ins (F13), hidden boosts (F16), the stall guard (F18) and the
+    tera cost being tuned (F17). Everything is restored afterwards."""
     settings = VARIANTS[variant][1]
-    saved = (payoff.our_tera_type, payoff.PAYOFF_ATTACK_TEMPERATURE, player.PAYOFF_STAND_INS_FOR)
+    saved = (
+        payoff.our_tera_type,
+        payoff.PAYOFF_ATTACK_TEMPERATURE,
+        player.PAYOFF_STAND_INS_FOR,
+        payoff.hidden_boosts,
+        player.PAYOFF_STALL_TURNS,
+        payoff.PAYOFF_TERA_COST,
+    )
+    if not settings.get("hidden_boosts", True):
+        payoff.hidden_boosts = lambda mon, belief: HiddenBoosts()
+    if not settings.get("stall_guard", True):
+        player.PAYOFF_STALL_TURNS = 10**9  # never reached
+    if "tera_cost" in settings:
+        payoff.PAYOFF_TERA_COST = settings["tera_cost"]
     if not settings.get("tera", True):
         payoff.our_tera_type = lambda battle: None
     if not settings.get("attack_weighting", True):
@@ -107,7 +130,14 @@ def switched_off(variant: str):
         with lasting_effects(settings.get("effects", True)):
             yield
     finally:
-        payoff.our_tera_type, payoff.PAYOFF_ATTACK_TEMPERATURE, player.PAYOFF_STAND_INS_FOR = saved
+        (
+            payoff.our_tera_type,
+            payoff.PAYOFF_ATTACK_TEMPERATURE,
+            player.PAYOFF_STAND_INS_FOR,
+            payoff.hidden_boosts,
+            player.PAYOFF_STALL_TURNS,
+            payoff.PAYOFF_TERA_COST,
+        ) = saved
 
 
 def summarise(results_dir: Path = ABLATION_RESULTS_DIR) -> list[dict]:
