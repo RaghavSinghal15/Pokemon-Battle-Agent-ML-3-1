@@ -1,0 +1,312 @@
+{
+  "split": "test",
+  "test": {
+    "naive_hidden": {
+      "model": "naive (class frequencies, hidden folded)",
+      "rows": 129486,
+      "hidden_rows": 13205,
+      "all_turns_log_loss": 0.8962598372707548,
+      "switch_log_loss": 0.45949976051853364,
+      "actual_switch_share": 0.17228117325425144,
+      "mean_predicted_switch": 0.17023095799937382,
+      "visible_only": {
+        "model": "naive (class frequencies, hidden folded)",
+        "rows": 116281,
+        "log_loss": 0.9768487047686547,
+        "accuracy": 0.5741006699288792,
+        "macro_f1": 0.2431444108145121,
+        "confusion_matrix": [
+          [
+            66757,
+            0,
+            0
+          ],
+          [
+            27216,
+            0,
+            0
+          ],
+          [
+            22308,
+            0,
+            0
+          ]
+        ],
+        "mean_predicted": {
+          "attack": 0.5909422369021589,
+          "non_damaging": 0.23882680509652857,
+          "switch": 0.1702309579995692
+        }
+      },
+      "switch_ece": 0.03609482925447433
+    },
+    "logistic_regression": {
+      "model": "logistic regression (C=0.01)",
+      "rows": 129486,
+      "hidden_rows": 13205,
+      "all_turns_log_loss": 0.7607172313307409,
+      "switch_log_loss": 0.39577718084959074,
+      "actual_switch_share": 0.17228117325425144,
+      "mean_predicted_switch": 0.19256955934330725,
+      "visible_only": {
+        "model": "logistic regression (C=0.01)",
+        "rows": 116281,
+        "log_loss": 0.8162031264575714,
+        "accuracy": 0.6250720238044049,
+        "macro_f1": 0.507361183133833,
+        "confusion_matrix": [
+          [
+            57372,
+            5756,
+            3629
+          ],
+          [
+            16673,
+            8936,
+            1607
+          ],
+          [
+            13368,
+            2564,
+            6376
+          ]
+        ],
+        "mean_predicted": {
+          "attack": 0.575952374102757,
+          "non_damaging": 0.2336494971111496,
+          "switch": 0.19039812878609333
+        }
+      },
+      "switch_ece": 0.022615460076379927
+    },
+    "lightgbm": {
+      "model": "LightGBM (255 leaves)",
+      "rows": 129486,
+      "hidden_rows": 13205,
+      "all_turns_log_loss": 0.6777418337025566,
+      "switch_log_loss": 0.3611033831438313,
+      "actual_switch_share": 0.17228117325425144,
+      "mean_predicted_switch": 0.1978922131478938,
+      "visible_only": {
+        "model": "LightGBM (255 leaves)",
+        "rows": 116281,
+        "log_loss": 0.7134471434015387,
+        "accuracy": 0.6800767107266019,
+        "macro_f1": 0.6055412015905149,
+        "confusion_matrix": [
+          [
+            56412,
+            5883,
+            4462
+          ],
+          [
+            12493,
+            12845,
+            1878
+          ],
+          [
+            10163,
+            2322,
+            9823
+          ]
+        ],
+        "mean_predicted": {
+          "attack": 0.5788191004864552,
+          "non_damaging": 0.2302817020560051,
+          "switch": 0.19089919745753242
+        }
+      },
+      "switch_ece": 0.025611039893642353
+    },
+    "lightgbm_hidden": {
+      "model": "LightGBM (255 leaves, hidden folded)",
+      "rows": 129486,
+      "hidden_rows": 13205,
+      "all_turns_log_loss": 0.6693107565674408,
+      "switch_log_loss": 0.35220490769196033,
+      "actual_switch_share": 0.17228117325425144,
+      "mean_predicted_switch": 0.17064213312049165,
+      "visible_only": {
+        "model": "LightGBM (255 leaves, hidden folded)",
+        "rows": 116281,
+        "log_loss": 0.723119593136798,
+        "accuracy": 0.6727926316423147,
+        "macro_f1": 0.584360801505864,
+        "confusion_matrix": [
+          [
+            57403,
+            6053,
+            3301
+          ],
+          [
+            12767,
+            12924,
+            1525
+          ],
+          [
+            11831,
+            2571,
+            7906
+          ]
+        ],
+        "mean_predicted": {
+          "attack": 0.5928074104080158,
+          "non_damaging": 0.23536628905018522,
+          "switch": 0.17182630054178685
+        }
+      },
+      "switch_ece": 0.0046631903169116135
+    },
+    "mlp": {
+      "model": "MLP (256, 128)",
+      "rows": 129486,
+      "hidden_rows": 13205,
+      "all_turns_log_loss": 0.681644902000042,
+      "switch_log_loss": 0.35688075057137203,
+      "actual_switch_share": 0.17228117325425144,
+      "mean_predicted_switch": 0.17018217075896658,
+      "visible_only": {
+        "model": "MLP (256, 128)",
+        "rows": 116281,
+        "log_loss": 0.7371908359339147,
+        "accuracy": 0.6655687515587241,
+        "macro_f1": 0.572545446472097,
+        "confusion_matrix": [
+          [
+            57400,
+            6083,
+            3274
+          ],
+          [
+            13313,
+            12523,
+            1380
+          ],
+          [
+            12178,
+            2660,
+            7470
+          ]
+        ],
+        "mean_predicted": {
+          "attack": 0.5919071718068968,
+          "non_damaging": 0.23665262602219037,
+          "switch": 0.1714402021709129
+        }
+      },
+      "switch_ece": 0.004243776388974031
+    },
+    "gru": {
+      "model": "GRU over the game (full history)",
+      "rows": 129486,
+      "hidden_rows": 13205,
+      "all_turns_log_loss": 0.6779089495017359,
+      "switch_log_loss": 0.35231248083082284,
+      "actual_switch_share": 0.17228117325425144,
+      "mean_predicted_switch": 0.16978359645491478,
+      "visible_only": {
+        "model": "GRU over the game (full history)",
+        "rows": 116281,
+        "log_loss": 0.7317697046313303,
+        "accuracy": 0.6701524754689072,
+        "macro_f1": 0.5867324144427198,
+        "confusion_matrix": [
+          [
+            56520,
+            6625,
+            3612
+          ],
+          [
+            12542,
+            13135,
+            1539
+          ],
+          [
+            11380,
+            2657,
+            8271
+          ]
+        ],
+        "mean_predicted": {
+          "attack": 0.5889322721739468,
+          "non_damaging": 0.24068343907980522,
+          "switch": 0.17038428874624786
+        }
+      },
+      "switch_ece": 0.006656218014496352
+    }
+  },
+  "paired_bootstrap": {
+    "lightgbm_hidden - naive_hidden": {
+      "difference": -0.22694908070331415,
+      "ci95": [
+        -0.23075317248099722,
+        -0.22322081504146618
+      ]
+    },
+    "lightgbm_hidden - logistic_regression": {
+      "difference": -0.09140647476330024,
+      "ci95": [
+        -0.09424653763911842,
+        -0.08854620172289542
+      ]
+    },
+    "lightgbm_hidden - lightgbm": {
+      "difference": -0.008431077135115908,
+      "ci95": [
+        -0.009589153739644078,
+        -0.007256017540952684
+      ]
+    },
+    "lightgbm_hidden - mlp": {
+      "difference": -0.012334145432601324,
+      "ci95": [
+        -0.013679108181756345,
+        -0.010917819964362297
+      ]
+    },
+    "lightgbm_hidden - gru": {
+      "difference": -0.00859819293429527,
+      "ci95": [
+        -0.010666670530586727,
+        -0.006567289951282269
+      ]
+    }
+  },
+  "training_minutes": {
+    "logistic_regression": 0.1292136589686076,
+    "lightgbm_hidden": 8.509269456068674,
+    "mlp": 64.6200507124265,
+    "gru": 83.78918837706247
+  },
+  "games": {
+    "mlp": {
+      "games": 1000,
+      "wins": 841,
+      "win_rate": 0.841,
+      "ci95": [
+        0.817035989537914,
+        0.8623540656261677
+      ]
+    },
+    "lightgbm_hidden": {
+      "games": 1000,
+      "wins": 813,
+      "win_rate": 0.813,
+      "ci95": [
+        0.787651777226964,
+        0.8359525842579556
+      ]
+    },
+    "naive_hidden": {
+      "games": 1000,
+      "wins": 836,
+      "win_rate": 0.836,
+      "ci95": [
+        0.8117721376883166,
+        0.8576561864616289
+      ]
+    },
+    "mlp_vs_reference_p": 0.09787099095190133
+  }
+}
