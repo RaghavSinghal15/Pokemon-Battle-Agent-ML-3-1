@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "player_class": "ExplainableAgent",
+  "opponent_class": "SimpleHeuristicsPlayer",
+  "format": "gen9randombattle",
+  "games": 250,
+  "wins": 201,
+  "losses": 49,
+  "ties": 0,
+  "win_rate": 0.804,
+  "ci_lower": 0.7503481276833216,
+  "ci_upper": 0.8484504931889075,
+  "interval_method": "wilson",
+  "z": 1.96,
+  "seed": 464,
+  "seed_scope": "Python/NumPy choices only; server teams are not seeded",
+  "source": {
+    "commit": "9ed73ac2015b14bba33a810852e29213874492f9",
+    "tracked_changes": false
+  },
+  "server_source": null,
+  "started_utc": "2026-11-24T07:52:57.892158+00:00",
+  "elapsed_seconds": 242.18626221999875,
+  "python_version": "3.13.18",
+  "poke_env_version": "0.16.1",
+  "variant": "no_lasting_effects",
+  "decisions": {
+    "best_response": 6630,
+    "baseline": 55
+  },
+  "mean_decision_seconds": 0.03459953583648454,
+  "fallbacks": {
+    "forced replacement could not be scored: PayoffUnavailable: No replacement could be scored;": 1,
+    "PayoffUnavailable: Unsupported action-order item": 2
+  }
+}
