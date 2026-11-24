@@ -15,7 +15,8 @@ Showdown requires bots to be registered by their owner (/ht in chat, "Something 
 "I want to register my bot"). Staff may first ask the bot to play its owner a few times:
 --accept-from accepts that many challenges from the owner instead of searching the ladder.
 
-Games are played one at a time. Per-game records, the explanation log and HTML replays go to
+Games are played one at a time. Per-game records, the explanation log, the dashboard trace
+(open with python -m pokeagent.dashboard <run>/trace.jsonl) and HTML replays go to
 data/interim/ladder/<run>/ (git-ignored: they name other players). The summary, with no
 usernames, goes to reports/results/ladder/<run>.json.
 """
@@ -104,8 +105,12 @@ async def main(args) -> None:
         sparring = None
 
     start = time.time()
-    with (folder / "explanations.log").open("w", encoding="utf-8") as stream:
+    with (
+        (folder / "explanations.log").open("w", encoding="utf-8") as stream,
+        (folder / "trace.jsonl").open("w", encoding="utf-8") as trace,
+    ):
         agent.explanation_stream = stream
+        agent.trace_stream = trace  # per-turn data for the dashboard (F13)
         if args.accept_from:
             # Registration trial: unrated games against the owner only, never the ladder.
             await agent.accept_challenges(args.accept_from, games)
