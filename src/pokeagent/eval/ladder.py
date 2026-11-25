@@ -10,8 +10,10 @@ it is a bot. The agent greets each opponent once per game for that reason. (Only
 accounts may chat in battles, so the greeting is silent on a local rehearsal.)
 """
 
+import json
 import re
 from collections.abc import Iterable
+from typing import TextIO
 
 from poke_env.data.normalize import to_id_str
 
@@ -38,7 +40,19 @@ class LadderAgent(ExplainableAgent):
         self.rating_changes: dict[str, dict[str, tuple[int, int]]] = {}
         self.greeting = greeting
         self._greeted: set[str] = set()
+        # Where each finished game is written as soon as it ends, so a batch that is
+        # stopped early (a hung game, a closed window) still keeps its finished games.
+        self.games_stream: TextIO | None = None
         super().__init__(*args, **kwargs)
+
+    def _battle_finished_callback(self, battle) -> None:
+        if self.games_stream is None:
+            return
+        record = game_record(
+            battle, self.rating_changes.get(battle.battle_tag, {}), to_id_str(self.username)
+        )
+        self.games_stream.write(json.dumps(record) + "\n")
+        self.games_stream.flush()
 
     async def _handle_battle_message(self, split_messages):
         tag = split_messages[0][0].lstrip(">").strip()

@@ -82,3 +82,20 @@ def test_ladder_agent_greets_once_per_battle(monkeypatch):
         ("battle-gen9randombattle-1", "hi, I'm a bot"),
         ("battle-x-2", "hi, I'm a bot"),
     ]
+
+
+def test_finished_games_are_written_as_they_end(monkeypatch):
+    import io
+    import json
+
+    agent = LadderAgent.__new__(LadderAgent)  # skip the network setup in __init__
+    agent.rating_changes = {"b": {"ragbot": (1000, 1016)}}
+    agent.games_stream = io.StringIO()
+    monkeypatch.setattr(LadderAgent, "username", "RagBot", raising=False)  # no login here
+    agent._battle_finished_callback(battle(True))
+    agent._battle_finished_callback(battle(False))
+    lines = [json.loads(line) for line in agent.games_stream.getvalue().splitlines()]
+    assert [line["won"] for line in lines] == [True, False]
+    assert lines[0]["rating_after"] == 1016
+    agent.games_stream = None
+    agent._battle_finished_callback(battle(True))  # no stream (rehearsal): nothing to write
