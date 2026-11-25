@@ -713,6 +713,26 @@ volunteers (friends, the course): fewer games and a much narrower skill range.
 (3) Comparing win rates across the two accounts: the ladder pairs players of similar rating, so
 win rates drift towards 50%. We compare final ratings instead.
 
+## A8 results: the first public ladder run (#82, 2026-11-25)
+
+**Result.** Two registered bots played people on the public Gen 9 Random Battle ladder on
+25 November (reports/results/ladder/ladder_summary.json). Bot-vs-bot games are excluded.
+
+| Bot | Games | Win rate (95% Wilson) | Rating (start 1000) | Opponents' mean rating |
+|---|---|---|---|---|
+| BITSBOT1, full agent | 101 | 58.4% (48.7 to 67.5) | 1246 (peak 1289) | 1174 |
+| BITSBOT2, class frequencies instead of the opponent model | 112 | 55.4% (46.1 to 64.2) | 1126 (peak 1289) | 1191 |
+
+**What it means.** Both bots beat ladder players more often than not and play at about 1230 Elo
+(a 58% win rate against 1174-rated opponents), mid-ladder. The 3-point gap between them is noise
+(two-proportion test p = 0.65); about 3,000 games per bot would be needed to detect it. This matches
+the no_opponent_model ablation against the heuristic bot (-0.9 points): an action-type forecast is
+accurate and calibrated but rarely changes which row of the payoff table is best.
+
+**Limits of the run.** One night, on a phone hotspot: the connection dropped twice, and the first
+runs stalled on opponents who stopped playing (fixed by the battle timer, above). Ratings were
+still rising when we stopped. Longer runs and a finer opponent model are future work.
+
 ## A8 follow-up: ladder games start the battle timer and save each game as it ends (2026-11-25)
 
 **Decision.** Ladder runs send `/timer on` at the start of every game (LADDER_START_TIMER), and
