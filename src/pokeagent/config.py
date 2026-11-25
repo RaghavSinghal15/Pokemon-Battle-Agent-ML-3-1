@@ -47,6 +47,10 @@ AGENT_PIPELINE_RESULTS_DIR = REPORTS_DIR / "results" / "agent-pipeline-smoke"
 LADDER_GAMES_DIR = INTERIM_DIR / "ladder"
 LADDER_RESULTS_DIR = REPORTS_DIR / "results" / "ladder"
 # Sent once at the start of every public game, so opponents know they are playing a bot.
+# Turn the battle timer on at the start of every ladder game. Without it, an opponent who
+# leaves the tab open and stops playing keeps the game (and our one-game-at-a-time bot)
+# waiting forever; with it, an inactive player loses after a few minutes.
+LADDER_START_TIMER = True
 LADDER_GREETING = "Hi! I'm a registered bot for a university machine-learning project. glhf!"
 
 # The Showdown format we play. "gen9randombattle" = Generation 9, singles, random teams.

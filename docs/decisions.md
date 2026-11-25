@@ -713,6 +713,22 @@ volunteers (friends, the course): fewer games and a much narrower skill range.
 (3) Comparing win rates across the two accounts: the ladder pairs players of similar rating, so
 win rates drift towards 50%. We compare final ratings instead.
 
+## A8 follow-up: ladder games start the battle timer and save each game as it ends (2026-11-25)
+
+**Decision.** Ladder runs send `/timer on` at the start of every game (LADDER_START_TIMER), and
+each finished game is written to games.jsonl as soon as it ends, not only when the batch of 25
+is over.
+
+**Why.** On the first night of ladder games, BITSBOT1 sent its move on turn 20 of its first game
+and then waited for 35 minutes: the opponent stopped playing but kept the tab open, and
+Showdown's timer is off unless a player turns it on. A bot that plays one game at a time is
+stuck for as long as the opponent is. With the timer on, an inactive player loses after a few
+minutes. Writing games as they end means a batch stopped early still keeps its results.
+
+**Alternatives.** A watchdog alone (artifacts/ladder_watchdog.py on the laptop ends a batch that
+makes no decision for 20 minutes): kept as a second safety net, but on its own it loses the
+hung game and, before this change, every finished game in that batch.
+
 ## DL3: every opponent model plays in the agent, the GRU through a live history (2026-11-24)
 
 **Decision.** For the agent games of the deep-learning comparison, the full agent's LightGBM

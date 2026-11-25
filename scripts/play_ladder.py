@@ -37,6 +37,7 @@ from pokeagent.config import (
     BATTLE_FORMAT,
     LADDER_GAMES_DIR,
     LADDER_RESULTS_DIR,
+    LADDER_START_TIMER,
     OPPONENT_MODEL_PATH,
     VALUE_UTILITY_MODEL_PATH,
 )
@@ -77,6 +78,7 @@ async def main(args) -> None:
         "battle_format": BATTLE_FORMAT,
         "max_concurrent_battles": 1,  # one game at a time on the public ladder
         "save_replays": str(folder / "replays"),
+        "start_timer_on_battle_start": LADDER_START_TIMER,
         "strategy": strategy,
         **agent_options(mode, utility),
     }
@@ -108,9 +110,12 @@ async def main(args) -> None:
     with (
         (folder / "explanations.log").open("w", encoding="utf-8") as stream,
         (folder / "trace.jsonl").open("w", encoding="utf-8") as trace,
+        (folder / "games.jsonl").open("w", encoding="utf-8") as finished,
     ):
         agent.explanation_stream = stream
         agent.trace_stream = trace  # per-turn data for the dashboard (F13)
+        if isinstance(agent, LadderAgent):
+            agent.games_stream = finished  # one line per game as it ends
         if args.accept_from:
             # Registration trial: unrated games against the owner only, never the ladder.
             await agent.accept_challenges(args.accept_from, games)
@@ -125,6 +130,7 @@ async def main(args) -> None:
         for tag, battle in agent.battles.items()
         if battle.finished
     ]
+    # Rewritten at the end: a rating line can arrive just after the game's last message.
     with (folder / "games.jsonl").open("w", encoding="utf-8") as stream:
         for record in records:
             stream.write(json.dumps(record) + "\n")
